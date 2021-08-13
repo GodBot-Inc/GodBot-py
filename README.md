@@ -5,10 +5,11 @@ This is the official repository for the discord.py GodBot
 
 ## Setup
 1. Clone the repository ```https://github.com/RasberryKai/GodBot_discord```.
-2. Go into data custom_lavalink and clone the modified Lavalink.py repository ```https://github.com/RasberryKai/Lavalink.py```.
-3. Move the contents of the **Lavalink.py** folder **into custom_lavalink**.
-4. Create a file Constants.py in src/ and create following fields:
+2. Create a file Constants.py in src/ and create following fields:
    USERNAME="Database Username"
    PASSWORD="Database Password"
    TOKEN="Bot Token"
-5. Run src/main.py from a terminal.
+3. Run src/main.py from a terminal.
+
+### NOTE:
+This repository is basically 2 in 1. First we have the GodBot and second we have the modified lavalink.py library, we use to play music.
