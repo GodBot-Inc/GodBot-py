@@ -1,0 +1,891 @@
+from __future__ import unicode_literals
+
+import asyncio
+from typing import Iterable
+
+import discord
+from aiohttp import ClientSession
+from aiohttp.client_exceptions import ClientError
+from data.custom_lavalink import lavalink  # git clone https://github.com/RasberryKai/Lavalink.py  Then rename it to custom_lavalink and put it into the data folder
+from discord.ext import commands
+from discord.ext.commands import Cog
+from discord_slash.cog_ext import cog_slash
+from discord_slash.model import ButtonStyle
+from discord_slash import SlashContext
+from discord_slash.utils.manage_commands import create_choice, create_option
+from discord_slash.utils.manage_components import (create_actionrow,
+                                                   create_button)
+from src.utility.ButtonHandler import EventHandler
+from src.utility.DatabaseCommunication import Database
+from src.utility.youtube_api import Api
+
+COLOUR = 0xC2842F
+
+
+class cog(Cog):
+    def __init__(self, client):
+        self.client = client
+        self.db = Database()
+        self.client.music = lavalink.Client(842387967510315009)
+        self.client.music.add_node("127.0.0.1", 2333, "youshallnotpass", "eu", "music-node")
+        self.client.add_listener(self.client.music.voice_update_handler, "on_socket_response")
+        self.client.music.add_event_hook(self.track_hook)
+        print("Jukebox extension loaded")
+
+    async def track_hook(self, event):
+        if isinstance(event, lavalink.events.QueueEndEvent):
+            print(f"Event in track_hook is being called {event}")
+            guild_id: int = int(event.player.guild_id)
+            await self.connect_to(guild_id, 0)
+
+    async def connect_to(self, guild_id: int, channel_id: int):
+        ws = self.client._connection._get_websocket(guild_id)
+        if channel_id == 0:
+            await ws.voice_state(str(guild_id), None)
+            return
+        await ws.voice_state(str(guild_id), str(channel_id))
+
+    async def _get_embed(self, mbed_type: str, content: str) -> discord.Embed:
+        """A helper function that returns either a short success embed or a short error embed.
+
+        Args:
+            mbed_type (str): Whether the message should be a success or an error message.
+            content (str): The content of the message.
+
+        Returns:
+            discord.Embed: The requested message.
+        """
+        if mbed_type == "success":
+            mbed = discord.Embed(
+                title=f"{content}",
+                description="",
+                colour=discord.Colour.green()
+            )
+            return mbed
+        elif mbed_type == "error":
+            mbed = discord.Embed(
+                title=f"{content}",
+                description="",
+                colour=discord.Colour.red()
+            )
+            return mbed
+
+
+    @Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        print("voice state update")
+        if not member.bot and after.channel is None:
+            if not [m for m in before.channel.members if not m.bot]:
+                player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(member.guild.id)
+                if player is not None:
+                    await player.stop()
+                await self.connect_to(member.guild.id, 0)
+
+        if member == self.client.user and after.channel is not None and before.channel is not None:
+            player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(member.guild.id)
+            if player is not None:
+                player.delete("channel")
+                player.store("channel", after.channel.id)
+                print(player.fetch("channel"))
+                if player.is_playing and not player.paused:
+                    await asyncio.sleep(1)
+                    await player.set_pause(True)
+                    await asyncio.sleep(0.5)
+                    await player.set_pause(False)
+
+
+    @cog_slash(
+        name="search",
+        description="Searches the web for songs that fit your search-key",
+        options=[
+            create_option(
+                name="search",
+                description="Here you give a search Term I will search for",
+                option_type=3,
+                required=True
+            ),
+            create_option(
+                name="results",
+                description="How many videos should be shown (mx. 12 min. 2)? Default is 8",
+                option_type=4,
+                required=False
+            ),
+            create_option(
+                name="songfilter",
+                description="Whether only songs should be searched",
+                option_type=3,
+                required=False,
+                choices=[
+                    create_choice(
+                        name="Only Songs",
+                        value="True"
+                    ),
+                    create_choice(
+                        name="Everything",
+                        value="False"
+                    )
+                ]
+            )
+        ]
+    )
+    async def _search(self, ctx: SlashContext, *, search: str, results: int=8, songfilter: str="True"):
+        """A search function with that you can search for Youtube Videos withing discord
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord
+            search (str): The search Key (Can be one or more words)
+            results (int, optional): How many results should be shown. Defaults to 8.
+            songfilter (str, optional): Whether to only show songs. Defaults to "True".
+        """
+        await ctx.defer()
+        if results > 12:
+            results = 12
+        elif results < 2:
+            results = 2
+
+        yt = Api()
+        error: str = yt.search(search, results, bool(songfilter))
+        if error == "Error":
+            await ctx.send(embed=await self._get_embed(mbed_type="error", content=":x: Something went wrong while proccessing the songs you searched for. **Please try again**"))
+            return
+            
+        song_dictionary = {}
+        for x in range(yt.found):
+            song_dictionary[str(x+1)] = {"title": yt.title[x], "thumbnail": yt.thumbnail[x], "url": yt.url[x], "views": yt.views[x]}
+        yt.close()  # Delete instance of YT-API client
+        # Here mbed is the sent once (starter message)
+        page = 1
+        buttons = [
+            create_button(
+                style=5,
+                label="Url",
+                url=song_dictionary["1"]["url"]
+            ),
+            create_button(
+                style=ButtonStyle.grey,
+                label="◀",
+                custom_id="search_left"
+            ),
+            create_button(
+                style=ButtonStyle.grey,
+                label="▶",
+                custom_id="search_right"
+            )
+        ]
+        ar = create_actionrow(*buttons)
+        current = song_dictionary[str(page)]
+        mbed = discord.Embed(
+            title="`{}`".format(current["title"]),
+            description=":eye_in_speech_bubble: {}\n{}/{}".format(
+                song_dictionary["1"]["views"],
+                page,
+                len(song_dictionary)
+            ),
+            colour=COLOUR
+        )
+        mbed.set_thumbnail(url=song_dictionary[str(page)]["thumbnail"])
+        mbed.set_footer(icon_url=ctx.author.avatar_url, text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
+        msg: discord.Message = await ctx.send(embed=mbed, components=[ar])
+        self.db.create_search(ctx.guild.id, ctx.author.id, msg.id, song_dictionary)
+        await EventHandler.start_timer(ctx, msg, msg.id)
+
+
+    async def _check_valid(self, url: str):
+        """Help function for the play command
+
+        Args:
+            url (str): Youtube Url to a video
+
+        Returns:
+            bool: Is the url a youtube url
+        """
+        try:  # If yt video is playlist
+            url.split("&list=")[1]
+            return False
+        except IndexError:
+            pass
+        try:
+            videoId: str = url.split("watch?v=")[1]
+        except IndexError:
+            return False
+        async with ClientSession() as session:
+            try:
+                await session.get("https://youtube.com/watch?v={}".format(videoId))
+            except ClientError:
+                return False
+        return True
+
+
+    @cog_slash(
+        name="play",
+        description="Plays the song given with the url",
+        options=[
+            create_option(
+                name="url",
+                description="Url of a song (Playlists are not supported yet)",
+                option_type=3,
+                required=True
+            )
+        ]
+    )
+    async def _play(self, ctx: SlashContext, url: str):
+        """A play command with that you can play a song from a youtube url.
+        NOTE: Playlists are not supported yet.
+
+        Args:
+            ctx (SlashContext): Object passed to interact with discord.
+            url (str): URL of a song. Not allowed: Livestreams, playlists.
+        """
+        await ctx.defer()
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed(mbed_type="error", content=":x: You are not connected to a Voicechannel"))
+            return
+
+        valid: bool = await self._check_valid(url)
+        if not valid:
+            await ctx.send(embed=await self._get_embed("error", ":x: The given url is not a valid one"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            player = self.client.music.player_manager.create(ctx.guild.id, endpoint=str(ctx.guild.region))
+        if not player.is_connected:
+            await self.connect_to(ctx.guild.id, ctx.author.voice.channel.id)
+            player.store("channel", ctx.author.voice.channel.id)
+
+        query: str = f'ytsearch:{url}'
+        results: dict = await player.node.get_tracks(query)
+
+        if results["tracks"] == []:
+            await ctx.send(embed=self._get_embed("error", ":x: Could not get the song you want to play"))
+            return
+
+        track = results['tracks'][0]
+     
+        yt = Api()
+        yt.search_video_url([url])
+        thumbnail: list = yt.thumbnail
+        title: list = yt.title
+        yt.close()  # Close instance of yt API
+
+        player.add(requester=ctx.author.id, track=track)
+        if not player.is_playing and not player.paused:  # If this song is the first in the queue
+            await player.play()
+            mbed = discord.Embed(
+                title="Now playing",
+                description=f"[{title[0]}]({url})",
+                colour=COLOUR
+            )
+            mbed.set_thumbnail(url=thumbnail[0])
+            mbed.set_footer(icon_url=ctx.author.avatar_url, text=f"Requested by {ctx.author.display_name}#{ctx.author.discriminator}")
+            await ctx.send(embed=mbed)
+            return
+
+        mbed = discord.Embed(
+            title="Added to Queue",
+            description=f"[{title[0]}]({url})",
+            colour=COLOUR
+        )
+        mbed.set_thumbnail(url=thumbnail[0])
+        mbed.set_footer(icon_url=ctx.author.avatar_url, text=f"Added by {ctx.author.display_name}#{ctx.author.discriminator}")
+        await ctx.send(embed=mbed)
+
+
+    @cog_slash(
+        name="playrandom",
+        description="Plays random songs ranked by relevance",
+        options=[
+            create_option(
+                name="search",
+                description="Here you give a search Term I will search for",
+                option_type=3,
+                required=True
+            ),
+            create_option(
+                name="queuelength",
+                description="Max songs I will randomly put in the queue",
+                option_type=4,
+                required=False
+            ),
+            create_option(
+                name="songfilter",
+                description="Whether only songs should be searched",
+                option_type=3,
+                required=False,
+                choices=[
+                    create_choice(
+                        name="Only Songs",
+                        value="True"
+                    ),
+                    create_choice(
+                        name="Everything",
+                        value="False"
+                    )
+                ]
+            )
+        ]
+    )
+    async def _playrandom(self, ctx: SlashContext, search: str, queuelength: int=None, songfilter: str="True"):
+        """With this command you can play random songs found by the godbot and add them to your queue.
+        The songs are sorted after relevance and put into groups. The order of the groups is random.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+            search (str): The search Key that the bot searches for. Can be one or more words.
+            queuelength (int, optional): How many songs max. will be put into the queue. Defaults to None.
+            song_filter (str, optional): Whether to only search for songs. Defaults to "True".
+        """
+        await ctx.send(embed=await self._get_embed("error", ":x: In Development"))
+        return
+
+        if queuelength is not None:
+            queuelength = max(min(queuelength, 25), 1)
+        elif queuelength is None:
+            queuelength = 10
+
+        if ctx.author.voice is None:
+            await ctx.send(":x: You are not in a Voicechannel")
+        
+        player = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            player = self.client.music.player_manager.create(ctx.guild.id, endpoint=str(ctx.guild.region))
+        if not player.is_connected:
+            await self.connect_to(ctx.guild.id, ctx.author.voice.channel.id)
+            player.store("channel", ctx.author.voice.channel.id)
+
+        yt = Api()
+        
+        yt.close()
+
+
+    @cog_slash(
+        name="pause",
+        description="Pauses the audio currently playing"
+    )
+    async def _pause(self, ctx):
+        """Pauses the audio playing on a server
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+        """
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: there is no player active on your server"))
+            return
+        if player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: I'm already on pause"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not get the channel I'm currently in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: We are not in the same channel"))
+            return
+
+        await player.set_pause(True)
+        mbed = discord.Embed(title=":pause_button: Paused audio", description="", colour=discord.Colour.blue())
+        await ctx.send(embed=mbed)
+
+
+    @cog_slash(
+        name="resume",
+        description="Resumes paused audio"
+    )
+    async def _resume(self, ctx):
+        """Resumes paused audio
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+        """
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no palyer active on your server"))
+            return
+        if not player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: I'm not on pause"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed= await self._get_embed("error", ":x: Could not get the channel I'm currently in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: We are not in the same channel"))
+            return
+
+        await player.set_pause(False)
+        mbed = discord.Embed(title=":play_pause: Resumed Audio", description="", colour=discord.Colour.blue())
+        await ctx.send(embed=mbed)
+
+
+    @cog_slash(
+        name="stop",
+        description="Stops the audio currently playing or being paused"
+    )
+    async def _stop(self, ctx):
+        """This command stops the audio playing. It clears the queue too.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+        """
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no player active on your server"))
+            return
+        if not player.paused and not player.is_playing:
+            await ctx.send(embed=await self._get_embed("error", ":x: I'm not paused and I'm not palying any songs"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: I could not get the channel I'm currently in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: We are not in the same channel"))
+            return
+
+        await player.stop()
+        player.queue = []
+        mbed = discord.Embed(title=":stop_button: Stopped Audio", description="", colour=discord.Colour.blue())
+        await ctx.send(embed=mbed)
+
+    @cog_slash(
+        name="skip",
+        description="Skips the current song in the queue"
+    )
+    async def _skip(self, ctx):
+        """Skips a song. Repeat will be deactivated temporarily to prevent skipping Errors.
+        After the song was skipped it'll be activated again. If no song is in the queue next. It'll just play nothing.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+        """
+        if ctx.author.voice is None:
+            await ctx.send(embed= await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no player active on your server"))
+            return
+        if not player.is_playing and not player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: No music is playing or being paused"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not get the channel I'm currently in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same channel as I am"))
+            return
+
+        loop_state = player.repeat
+        mbed = discord.Embed(title="", description=f":next_track: **Skipped** [{player.current.title}]({player.current.uri})", colour=discord.Colour.blue())
+        await player.skip()
+        await ctx.send(embed=mbed)
+        if loop_state:
+            mbed = discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="", colour=discord.Colour.blue())
+
+
+    @cog_slash(
+        name="loop",
+        description="Turns the loop function on or off",
+        options=[
+            create_option(
+                name="mode",
+                description="Specify if the loop should be on or off",
+                required=True,
+                option_type=5,
+                choices=[
+                    create_choice(
+                        name="On",
+                        value="True"
+                    ),
+                    create_choice(
+                        name="Off",
+                        value="False"
+                    )
+                ]
+            )
+        ]
+    )
+    async def _loop(self, ctx: SlashContext, mode: str):
+        """Loops the current song. If it ends the same song will be appended to the queue at the second position.
+
+        Args:
+            ctx (Slashcontext): Object passed to communicate with discord
+            mode (str): Whether to turn loop on or off
+        """
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no player active on your server"))
+            return
+        if not player.is_playing and not player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: No music is playing or being paused"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not get the channel I'm currently in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same channel as me"))
+            return
+
+        if player.repeat and mode == "True":
+            await ctx.send(embed=await self._get_embed("error", ":x: Already looping the current song"))
+            return
+        if not player.repeat and mode == "False":
+            await ctx.send(embed=await self._get_embed("error", ":x: Not looping the current song"))
+            return
+
+        player.set_repeat(bool(mode))
+        if mode == "True":
+            mbed = discord.Embed(title=":repeat: Looping the current song", description="", colour=discord.Colour.blue())
+            await ctx.send(embed=mbed)
+        elif not mode == "True":
+            mbed = discord.Embed(title=":arrow_right: Playing songs in order", description="", colour=discord.Colour.blue())
+            await ctx.send(embed=mbed)
+
+
+    @cog_slash(
+        name="volume",
+        description="Sets the volume to a different level",
+        options=[
+            create_option(
+                name="level",
+                description="A number between 1 and 10",
+                required=True,
+                option_type=4
+            )
+        ]
+    )
+    async def _volume(self, ctx: SlashContext, level: int):
+        """Changes the volume that the bot is playing the audio with. This applies to everyone on the server.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+            level (int): The volume level the bot will be playing at.
+        """
+        level: int = max(min(level, 10), 0)
+        
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+        
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no player active on your server"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: I could not get the channel I'm in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same Voicechannel as I am"))
+            return
+        
+        volume: int = player.volume
+        await player.set_volume(level*10)
+        if level > volume/10:
+            mbed = discord.Embed(title=f":arrow_up: Volume is now set to `{level}`", description="", colour=discord.Colour.blue())
+            await ctx.send(embed=mbed)
+        elif level < volume/10:
+            mbed = discord.Embed(title=f":arrow_down: Volume is now set to `{level}`", description="", colour=discord.Colour.blue())
+            await ctx.send(embed=mbed)
+        elif level == volume/10:
+            mbed = discord.Embed(title=f"Volume is now set to `{level}`", description="", colour=discord.Colour.blue())
+            await ctx.send(embed=mbed)
+
+    
+    @cog_slash(
+        name="queue",
+        description="Shows the queue of the current player"
+    )
+    async def _queue(self, ctx):
+        """Command to display the songs that are staged in the queue.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+        """
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no active player on your server"))
+            return
+        if not player.is_playing and not player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: I'm not playing audio or being paused"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(ebmed=await self._get_embed("error", ":x: I could not get the channel I'm in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same channel as I am"))
+            return
+
+        result_list: list  = []
+        queue: list = player.queue
+        print(player.current)
+        if queue == [] and player.current is None:
+            mbed = discord.Embed(
+                title="Queue",
+                description="**Empty**",
+                colour=COLOUR
+            )
+            await ctx.send(embed=mbed)
+            return
+
+        result_list.append(("`Now playing`", "[{}]({})".format(player.current.title, player.current.uri)))
+        #TODO: program the string shit more efficient
+        if not queue == []:
+            for x in range(len(queue)):
+                result_list.append(("`{}`".format(x+1), "[{}]({})".format(queue[x].title, queue[x].uri)))
+        
+        for x in result_list:
+            if x == result_list[0]:
+                final_string: str = "{} {}".format(result_list[0][0], result_list[0][1])
+                continue
+            final_string = final_string + "\n{} {}".format(x[0], x[1])
+
+        mbed = discord.Embed(
+            title="Queue",
+            description="{}".format(final_string),
+            colour=COLOUR
+        )
+        await ctx.send(embed=mbed)
+
+
+    @cog_slash(
+        name="current",
+        description="Shows information about the current song"
+    )
+    async def _current(self, ctx: SlashContext):
+        """Shows Information about the current song that is playing.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+        """
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no player active on your server"))
+            return
+        if not player.is_playing and not player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: I'm not playing audio or being paused"))
+            return
+        
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: I could nto get the channel I'm in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same channel as I am"))
+            return
+
+        yt = Api()
+        try:
+            yt.search_video_url([player.current.uri])
+        except KeyError:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not process the current song"))
+            return
+
+        requester: discord.Member = discord.utils.get(ctx.guild.members, id=player.current.requester)
+
+        mbed = discord.Embed(
+            title=f"`{player.current.title}`",
+            description="",
+            colour=COLOUR
+        )
+        mbed.set_thumbnail(url=yt.thumbnail[0])
+        mbed.add_field(name=":eye_in_speech_bubble:", value=f"`{yt.views[0]}`")
+
+        if yt.likes[0] == []:
+            mbed.add_field(name=":thumbsup:", value="`-`")
+            mbed.add_field(name=":thumbsdown", value="`-`")
+        else:
+            mbed.add_field(name=":thumbsup:", value=f"`{yt.likes[0]}`")
+            mbed.add_field(name=":thumbsdown:", value=f"`{yt.dislikes[0]}`")
+
+        if yt.comments[0] == []:
+            mbed.add_field(name=":speech_balloon:", value="`-`")
+        else:
+            mbed.add_field(name=":speech_balloon:", value=f"`{yt.comments[0]}`")
+
+        mbed.add_field(name=":writing_hand:", value=f"`{player.current.author}`")
+
+        if requester is None:
+            mbed.add_field(name=":mag_right:", value=f"@{player.current.requester}")
+        else:
+            mbed.add_field(name=":mag_right:", value=f"{requester.mention}")
+
+        mbed.add_field(name=":link:", value=f"{player.current.uri}", inline=False)
+        mbed.set_footer(icon_url=ctx.author.avatar_url, text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
+        await ctx.send(embed=mbed)
+        yt.close()
+
+        
+    @cog_slash(
+        name="remove",
+        description="Removes a song from the queue with the given index",
+        options=[
+            create_option(
+                name="index",
+                description="The index of the song that is going to be removed",
+                option_type=4,
+                required=True
+            )
+        ]
+    )
+    async def _remove(self, ctx: SlashContext, index: int):
+        """Removes a certain track from the playlist.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+            index (int): This argument determines the song that is going to be removed.
+        """
+        await ctx.defer()
+
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not find a player on your server"))
+            return
+        if not player.is_playing and not player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: I'm not playing audio or being paused"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not get teh channel I'm currently in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same Voicechannel as I am"))
+            return
+
+        if player.queue == []:
+            await ctx.send(embed=await self._get_embed("error", ":x: Queue is empty so I can't remove anything from it"))
+            return
+
+        if index-1 > len(player.queue):
+            await ctx.send(embed=await self._get_embed("error", ":x: There is no track with this index"))
+            return
+        else:
+            track: lavalink.AudioTrack = player.queue.pop(index-1)
+            mbed = discord.Embed(
+                title="",
+                description=f":white_check_mark: **Removed [{track.title}]({track.uri}) from the queue.**",
+                colour=discord.Colour.green()
+            )
+            await ctx.send(embed=mbed)
+
+
+    @cog_slash(
+        name="removedupes",
+        description="Removes all duplicates from the queue"
+    )
+    async def _removedupes(self, ctx: SlashContext):
+        """Removes all duplicates from the queue list.
+
+        Args:
+            ctx (SlashContext): Object passed to comunicate with discord.
+        """
+        def entdupe(seq: list) -> list:
+            """A function that removes all duplicates from a list very fast.
+
+            Args:
+                seq (list): The original list that the function should remove all duplicates from.
+
+            Returns:
+                list: Original list with it's order but without the duplicates
+            """
+            result_tracks: list = []
+            result_titles: list = []
+
+            for item in seq:
+                if item.title not in result_titles:
+                    result_tracks.append(item)
+                    result_titles.append(item.title)
+
+            return result_tracks
+
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+        
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not find a player on your server"))
+            return
+        if not player.is_playing and not player.paused:
+            await ctx.send(embed=await self._get_embed("error", ":x: I'm not playing audio or being paused"))
+            return
+        
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not find the channel I'm in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same channel as I am"))
+            return
+
+        player.queue = entdupe(player.queue)
+        await ctx.send(embed=await self._get_embed("success", ":white_check_mark: Cleand up queue"))
+
+
+    @cog_slash(
+        name="leave",
+        description="Leaves the Voicechannel and cleans up the player, queue etc."
+    )
+    async def _leave(self, ctx: SlashContext):
+        """The bot leaves the Voicechannel on the server. It also cleans up the queue and player.
+
+        Args:
+            ctx (SlashContext): Object passed to communicate with discord.
+        """
+        if ctx.author.voice is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could nto find the channel I'm in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: You are not in the same channel as I am"))
+            return
+
+        if player is not None:
+            await player.stop()
+        await self.connect_to(ctx.guild.id, 0)
+        await ctx.send(embed=await self._get_embed("success", ":white_check_mark: Left the Voicechannel and cleaned up"))
+
+
+def setup(client):
+    client.add_cog(cog(client))
