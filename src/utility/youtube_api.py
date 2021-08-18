@@ -1,7 +1,7 @@
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from pprint import pprint
-from CONSTANTS import YT_API_KEY
+from src.CONSTANTS import YT_API_KEY
 
 
 class Api:
@@ -68,7 +68,6 @@ class Api:
         self.url = []
         self.videoId = []
         self.views = []
-        self.found = 0
         if only_songs:
             r = self.yt.search().list(
                 part="snippet",
@@ -127,6 +126,28 @@ class Api:
             self.thumbnail.append(response["items"][0]["snippet"]["thumbnails"]["high"]["url"])
             self.search_statistics(Id)
 
+    def search_playlist_items(self, Id: str):
+        self.reset_vars()
+        request = self.yt.playlistItems().list(
+            part="snippet",
+            maxResults=25,
+            playlistId=Id,
+            fields="items/snippet/resourceId(videoId),items/snippet(thumbnails(high),title)"
+        )
+        
+        try:
+            response = request.execute()
+        except HttpError as e:
+            print(e)
+            return
+
+        for x in range(0, len(response["items"])):
+            self.url.append(self._watch_url.format(response["items"][x]["snippet"]["resourceId"]["videoId"]))
+            self.videoId.append(response["items"][x]["snippet"]["resourceId"]["videoId"])
+            self.thumbnail.append(response["items"][x]["snippet"]["thumbnails"]["high"])
+            self.title.append(response["items"][x]["snippet"]["title"])
+            self.found += 1
+
     def close(self):
         self.yt.close()
         self.__del__()
@@ -134,4 +155,7 @@ class Api:
 
 if __name__ == "__main__":
     yt = Api()
-    yt.search_video_url(["https://www.youtube.com/watch?v=ZmDBbnmKpqQ"])
+    yt.search_playlist_items("RDMM")
+    pprint(yt.title)
+    pprint(yt.thumbnail)
+    pprint(yt.url)
