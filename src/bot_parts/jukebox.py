@@ -248,7 +248,7 @@ class Jukebox(Cog):
                 yt = Api()
                 yt.search_video_url([url])
                 if yt.thumbnail == [] or yt.title == []:
-                    await ctx.send(embed=await ctx.send(embed=await self._get_embed("error", ":x: Could not get the son gyou want to play. Maybe it's and old url or the video is not public")))
+                    await ctx.send(embed=await ctx.send(embed=await self._get_embed("error", ":x: Could not get the song you want to play. Maybe it's and old url or the video is not public")))
                     return
                 thumbnail: str = yt.thumbnail [0]
                 title: str = yt.title[0]
@@ -339,6 +339,14 @@ class Jukebox(Cog):
             await self.connect_to(ctx.guild.id, ctx.author.voice.channel.id)
             player.store("channel", ctx.author.voice.channel.id)
 
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await self._get_embed("error", ":x: I could not get the channel I'm in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: We are not in the same channel"))
+            return
+
         if url_type[0] == "video":
             await play_video(self, ctx, player, url_type)
             
@@ -391,25 +399,78 @@ class Jukebox(Cog):
             song_filter (str, optional): Whether to only search for songs. Defaults to "True".
         """
         await ctx.send(embed=await self._get_embed("error", ":x: In Development"))
-        return
 
         if queuelength is not None:
             queuelength = max(min(queuelength, 25), 1)
         elif queuelength is None:
-            queuelength = 10
+            queuelength = 1
 
         if ctx.author.voice is None:
             await ctx.send(":x: You are not in a Voicechannel")
-        
-        player = self.client.music.player_manager.get(ctx.guild.id)
+
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
             player = self.client.music.player_manager.create(ctx.guild.id, endpoint=str(ctx.guild.region))
         if not player.is_connected:
             await self.connect_to(ctx.guild.id, ctx.author.voice.channel.id)
             player.store("channel", ctx.author.voice.channel.id)
 
+        channel: int = player.fetch("channel")
+        if ctx.author.voice.channel.id is None:
+            await ctx.send(embed=self._get_embed("error", ":x: I could not get the channel I'm in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await self._get_embed("error", ":x: We are not in the same channel"))
+            return
+
         yt = Api()
-        
+        yt.search(search, 1, bool(songfilter))
+        if yt.thumbnail == [] or yt.title == [] or yt.url == []:
+            if bool(songfilter):
+                await ctx.send(embed=await self._get_embed("error", f":x: No songs found that are matching the keyword {search}"))
+            elif not bool(songfilter):
+                await ctx.send(embed=await self._get_embed("error", f":x: No videos found that are matching the keyword {search}"))
+            return
+
+        results: dict = await player.node.get_tracks(f"ytsearch: {yt.url[0]}")
+        if results["tracks"] == {}:
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not get the song you want to play. Maybe it's and old url or the video is not public"))
+            return
+        track = results["tracks"][0]
+
+        if not player.is_playing and not player.paused:
+            player.play()
+            
+            mbed = discord.Embed(
+                title="Now playing",
+                description=f"({yt.title[0]})[{yt.url[0]}]",
+                colour=COLOUR
+            )
+
+        elif player.is_playing or player.paused:
+            mbed = discord.Embed(
+                title="Added to Queue",
+                description=f"({yt.title[0]})[{yt.url[0]}]",
+                colour=COLOUR
+            )
+
+        if yt.likes[0] == []:
+            mbed.add_field(name=":thumbsup:", value="`-`")
+            mbed.add_field(name=":thumbsdown", value="`-`")
+        else:
+            mbed.add_field(name=":thumbsup:", value=f"`{yt.likes[0]}`")
+            mbed.add_field(name=":thumbsdown:", value=f"`{yt.dislikes[0]}`")
+
+        if yt.comments[0] == []:
+            mbed.add_field(name=":speech_balloon:", value="`-`")
+        else:
+            mbed.add_field(name=":speech_balloon:", value=f"`{yt.comments[0]}`")
+
+        mbed.add_field(name=":writing_hand:", value=f"`{track.author}`")
+
+        mbed.set_thumbnail(url=yt.thumbnail[0])
+        mbed.set_footer(icon_url=ctx.author.avatar_url, text=f"Requested by {ctx.author.display_name}#{ctx.author.discriminator}")
+
         yt.close()
 
 
