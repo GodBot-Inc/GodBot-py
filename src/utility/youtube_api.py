@@ -3,6 +3,15 @@ from googleapiclient.errors import HttpError
 from pprint import pprint
 from src.CONSTANTS import YT_API_KEY
 
+"""
+TODO: Choose a different structure for the YT-Api wrapper.
+1. In the search_url you can pass a list. But you still send a single reqeust for
+every url (You have to). But then the list makes no sense because you can just loop
+it in the function it makes absolutely NO DIFFERENCE and it would be better readable.
+2. The variables title etc. should be strings. But we need a replacement for search
+in search the lists make sense, because you have a list of different results.
+"""
+
 
 class Api:
     def __init__(self):
@@ -51,15 +60,15 @@ class Api:
         except KeyError:
             pass
         else:
-            self.likes.append(" ".join([raw_likes[i:i+3][::-1] for i in range(0, len(raw_likes), 3)][::-1]))
-            self.dislikes.append(" ".join([raw_dislikes[i:i+3][::-1] for i in range(0, len(raw_dislikes), 3)][::-1]))
+            self.likes.append(" ".join([raw_likes[i:i + 3][::-1] for i in range(0, len(raw_likes), 3)][::-1]))
+            self.dislikes.append(" ".join([raw_dislikes[i:i + 3][::-1] for i in range(0, len(raw_dislikes), 3)][::-1]))
         try:
             raw_comments = "".join(list(response["items"][0]["statistics"]["commentCount"])[::-1])
         except KeyError:
             pass
         else:
-            self.comments.append(" ".join([raw_comments[i:i+3][::-1] for i in range(0, len(raw_comments), 3)][::-1]))
-        self.views.append(" ".join([raw_views[i:i+3][::-1] for i in range(0, len(raw_views), 3)][::-1]))
+            self.comments.append(" ".join([raw_comments[i:i + 3][::-1] for i in range(0, len(raw_comments), 3)][::-1]))
+        self.views.append(" ".join([raw_views[i:i + 3][::-1] for i in range(0, len(raw_views), 3)][::-1]))
 
     def search(self, keyword: str, maxResults: int, only_songs: bool):
         self.reset_vars()
@@ -134,7 +143,7 @@ class Api:
             playlistId=Id,
             fields="items/snippet/resourceId(videoId),items/snippet(thumbnails(high),title)"
         )
-        
+
         try:
             response = request.execute()
         except HttpError as e:

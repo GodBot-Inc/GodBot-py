@@ -92,7 +92,6 @@ class EventHandler:
         elif tag == "disable":
             buttons = [
                 create_button(
-                    #TODO: Change button Type
                     style=5,
                     label="Url",
                     disabled=True,
