@@ -12,6 +12,7 @@ from discord_slash import SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
+from src.utility.errors import VideoNotFound
 from src.utility.ButtonHandler import EventHandler
 from src.utility.DatabaseCommunication import Database
 from src.utility.youtube_api import Api
@@ -206,11 +207,13 @@ class Jukebox(Cog):
 
         """
         results: dict = await player.node.get_tracks(f"ytsearch: https://www.youtube.com/watch?v={videoId}")
-        if not results["tracks"]:
+        if not results["tracks"] and not playlist:
             await ctx.send(embed=await _get_embed("error",
                                                   ":x: Could not get the song you want to play. Maybe it's an old url or the video is not public"))
             return
-        print(results["tracks"])
+        elif not results["tracks"] and playlist:
+            raise VideoNotFound("Song was not found")
+
         track = results["tracks"][0]
         print(track)
 
@@ -265,6 +268,9 @@ class Jukebox(Cog):
             await ctx.send(embed=mbed)
             yt.close()
 
+        if not player.is_playing and not player.paused:
+            await player.play()
+
     async def play_playlist(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, playlistId: str = None,
                             videoIds: tuple = None):
         """
@@ -282,18 +288,31 @@ class Jukebox(Cog):
         """
         yt = Api()
 
+        videos_found: int = 0
+
         player_state: bool = False
         if player.is_playing or player.paused:
             player_state = True
 
         if playlistId is not None:
             yt.search_playlist_items(playlistId)
-            for x in range(0, len(yt.found)):
-                await self.play_video(ctx, player, yt.videoId[x], True)
+            if yt.found == 0:
+                await ctx.send(embed=await _get_embed("error", ":x: I could not resolve your playlist. Maybe it's an old url or it's private."))
+                return
+            for x in range(0, yt.found):
+                try:
+                    await self.play_video(ctx, player, yt.videoId[x], True)
+                    videos_found += 1
+                except VideoNotFound:
+                    pass
 
         elif videoIds is not None:
-            for x in range(0, len(videoIds)):
-                await self.play_video(ctx, player, videoIds[x], True)
+            for x in range(0, videoIds):
+                try:
+                    await self.play_video(ctx, player, videoIds[x], True)
+                    videos_found += 1
+                except VideoNotFound:
+                    pass
 
         if player_state:
             mbed = discord.Embed(
@@ -307,7 +326,7 @@ class Jukebox(Cog):
                 description="",
                 colour=COLOUR
             )
-        mbed.add_field(name="Songs added", value=f"`{yt.found}`")
+        mbed.add_field(name="Songs added", value=f"`{videos_found}`")
         mbed.set_thumbnail(url=yt.thumbnail[0])
         mbed.set_footer(icon_url=ctx.author.avatar_url,
                         text=f"Added by {ctx.author.display_name}#{ctx.author.discriminator}")
@@ -395,7 +414,7 @@ class Jukebox(Cog):
         if url_type[0] == "video":
             await self.play_video(ctx, player, url_type[1])
 
-        elif url_type[1] == "playlist":
+        elif url_type[0] == "playlist":
             await self.play_playlist(ctx, player, url_type[1])
 
     @cog_slash(
@@ -642,6 +661,7 @@ class Jukebox(Cog):
         description="Skips the current song in the queue"
     )
     async def _skip(self, ctx):
+        #TODO: Add skip value so you can skip more than one song with one command
         """
 
         Skips a song in the queue.
@@ -817,6 +837,7 @@ class Jukebox(Cog):
         description="Shows the queue of the current player"
     )
     async def _queue(self, ctx):
+        #TODO: Make queue pages
         # TODO: Make queue prettier
         """
 

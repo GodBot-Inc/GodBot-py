@@ -124,7 +124,7 @@ class Api:
             except HttpError as e:
                 print(f"Could not proccess {url} Error Details {e}")
                 return
-            if response["items"] == []:
+            if not response["items"]:
                 print(f"Nothing found to {url}")
                 continue
             if response["items"][0]["snippet"]["liveBroadcastContent"] == "live":
@@ -150,12 +150,15 @@ class Api:
             print(e)
             return
 
+        self.found = len(response["items"])
+        if self.found == 0:
+            return
+
         for x in range(0, len(response["items"])):
             self.url.append(self._watch_url.format(response["items"][x]["snippet"]["resourceId"]["videoId"]))
             self.videoId.append(response["items"][x]["snippet"]["resourceId"]["videoId"])
-            self.thumbnail.append(response["items"][x]["snippet"]["thumbnails"]["high"])
+            self.thumbnail.append(response["items"][x]["snippet"]["thumbnails"]["high"]["url"])
             self.title.append(response["items"][x]["snippet"]["title"])
-            self.found += 1
 
     def close(self):
         self.yt.close()
@@ -164,7 +167,8 @@ class Api:
 
 if __name__ == "__main__":
     yt = Api()
-    yt.search_playlist_items("RDMM")
+    yt.search_playlist_items("RDGMEMQ1dJ7wXfLlqCjwV0xfSNbAVMLq9c_MrtJp0")
+    print(yt.found)
     pprint(yt.title)
     pprint(yt.thumbnail)
     pprint(yt.url)
