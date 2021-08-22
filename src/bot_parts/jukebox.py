@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import asyncio
 
 import discord
+from typing import Tuple
+
 from data.custom_lavalink import \
     lavalink  # git clone https://github.com/RasberryKai/Lavalink.py  Then rename it to custom_lavalink and put it into the data folder
 from discord.ext.commands import Cog
@@ -464,7 +466,6 @@ class Jukebox(Cog):
 
         """
         await ctx.send(embed=await _get_embed("error", ":x: In Development"))
-        return
 
         if queuelength != 1:
             queuelength = max(min(queuelength, 25), 1)
@@ -488,22 +489,27 @@ class Jukebox(Cog):
             return
 
         yt = Api()
-        yt.search(search, 1, bool(songfilter))
+        if songfilter == "True":
+            yt.search(search, 1, True)
+        else:
+            yt.search(search, 1, False)
         if yt.thumbnail == [] or yt.title == [] or yt.url == []:
-            if bool(songfilter):
+            if songfilter == "True":
                 await ctx.send(
                     embed=await _get_embed("error", f":x: No songs found that are matching the keyword {search}"))
-            elif not bool(songfilter):
+            else:
                 await ctx.send(
                     embed=await _get_embed("error", f":x: No videos found that are matching the keyword {search}"))
             return
 
         results: dict = await player.node.get_tracks(f"ytsearch: {yt.url[0]}")
-        if results["tracks"] == {}:
+        if not results["tracks"]:
             await ctx.send(embed=await _get_embed("error",
                                                   ":x: Could not get the song you want to play. Maybe it's and old url or the video is not public"))
             return
         track = results["tracks"][0]
+
+        player.add(requester=ctx.author.id, track=track)
 
         if not player.is_playing and not player.paused:
             await player.play()
@@ -514,31 +520,16 @@ class Jukebox(Cog):
                 colour=COLOUR
             )
 
-        elif player.is_playing or player.paused:
+        else:
             mbed = discord.Embed(
                 title="Added to Queue",
                 description=f"({yt.title[0]})[{yt.url[0]}]",
                 colour=COLOUR
             )
-
-        if not yt.likes[0]:
-            mbed.add_field(name=":thumbsup:", value="`-`")
-            mbed.add_field(name=":thumbsdown", value="`-`")
-        else:
-            mbed.add_field(name=":thumbsup:", value=f"`{yt.likes[0]}`")
-            mbed.add_field(name=":thumbsdown:", value=f"`{yt.dislikes[0]}`")
-
-        if not yt.comments[0]:
-            mbed.add_field(name=":speech_balloon:", value="`-`")
-        else:
-            mbed.add_field(name=":speech_balloon:", value=f"`{yt.comments[0]}`")
-
-        mbed.add_field(name=":writing_hand:", value=f"`{track.author}`")
-
         mbed.set_thumbnail(url=yt.thumbnail[0])
         mbed.set_footer(icon_url=ctx.author.avatar_url,
                         text=f"Requested by {ctx.author.display_name}#{ctx.author.discriminator}")
-
+        await ctx.send(embed=mbed)
         yt.close()
 
     @cog_slash(
@@ -660,7 +651,7 @@ class Jukebox(Cog):
         name="skip",
         description="Skips the current song in the queue"
     )
-    async def _skip(self, ctx):
+    async def _skip(self, ctx: SlashContext, amount: int):
         #TODO: Add skip value so you can skip more than one song with one command
         """
 
@@ -724,7 +715,6 @@ class Jukebox(Cog):
         ]
     )
     async def _loop(self, ctx: SlashContext, mode: str):
-        # TODO: Fix disable loop bug
         """
 
         Loops the current song. If ti ends the same song will be appended to the queue at the second position.
@@ -1047,7 +1037,7 @@ class Jukebox(Cog):
 
         """
 
-        def entdupe(seq: list) -> list:
+        def entdupe(seq: list) -> Tuple[list, int]:
             """
 
             A function that removes all duplicates from a list.
@@ -1060,12 +1050,16 @@ class Jukebox(Cog):
             result_tracks: list = []
             result_titles: list = []
 
+            removed: int = 0
+
             for item in seq:
                 if item.title not in result_titles:
                     result_tracks.append(item)
                     result_titles.append(item.title)
+                else:
+                    removed += 1
 
-            return result_tracks
+            return result_tracks, removed
 
         if ctx.author.voice is None:
             await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
@@ -1087,8 +1081,9 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
             return
 
-        player.queue = entdupe(player.queue)
-        await ctx.send(embed=await _get_embed("success", ":white_check_mark: Cleand up queue"))
+        entduped_tuple: tuple = entdupe(player.queue)
+        player.queue = entduped_tuple[0]
+        await ctx.send(embed=await _get_embed("success", f":white_check_mark: Removed {entduped_tuple[1]}"))
 
     @cog_slash(
         name="leave",

@@ -127,6 +127,11 @@ async def on_member_remove(member):
     pass
 
 
+@client.command()
+async def ping(ctx):
+    await ctx.send(f"{round(client.latency, 1)}")
+
+
 @slash.slash(
     name="invitelink",
     description="get an invitelink to the server",
