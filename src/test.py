@@ -1,3 +1,3 @@
-tracks = ["jkflaösd", "jfadkslöf", "aflöskdj", "fjasdlö", "fajsdlf"]
+tets_list = ["1", "2", "3"]
 
-print(tracks[2:])
+print(tets_list[1:])

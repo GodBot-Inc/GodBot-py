@@ -4,15 +4,13 @@ from pprint import pprint
 from time import time
 
 import discord
-import youtube_dl
 from discord.utils import get
 from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
-from youtube_dl.utils import ExtractorError
 
-from utility.DatabaseCommunication import Database
-from utility.discord_api import Api
+from src.utility.DatabaseCommunication import Database
+from src.utility.discord_api import Api
 
 db = Database()
 

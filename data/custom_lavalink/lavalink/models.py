@@ -60,7 +60,8 @@ class AudioTrack:
             self.extra = extra
         except KeyError as ke:
             missing_key, = ke.args
-            raise InvalidTrack('Cannot build a track from partial data! (Missing key: {})'.format(missing_key)) from None
+            raise InvalidTrack(
+                'Cannot build a track from partial data! (Missing key: {})'.format(missing_key)) from None
 
     def __getitem__(self, name):
         return super().__getattribute__(name)
@@ -80,6 +81,7 @@ class BasePlayer(ABC):
     node: :class:`Node`
         The node that the player is connected to.
     """
+
     def __init__(self, guild_id, node):
         self.guild_id = str(guild_id)
         self.node = node
@@ -154,6 +156,7 @@ class DefaultPlayer(BasePlayer):
     current: :class:`AudioTrack`
         The track that is playing currently.
     """
+
     def __init__(self, guild_id, node):
         super().__init__(guild_id, node)
 
@@ -259,7 +262,8 @@ class DefaultPlayer(BasePlayer):
         else:
             self.queue.insert(index, at)
 
-    async def play(self, track: typing.Union[AudioTrack, dict] = None, start_time: int = 0, end_time: int = 0, no_replace: bool = False):
+    async def play(self, track: typing.Union[AudioTrack, dict] = None, start_time: int = 0, end_time: int = 0,
+                   no_replace: bool = False):
         """
         Plays the given track.
 
@@ -306,12 +310,14 @@ class DefaultPlayer(BasePlayer):
 
         if start_time is not None:
             if not isinstance(start_time, int) or not 0 <= start_time <= track.duration:
-                raise ValueError('start_time must be an int with a value equal to, or greater than 0, and less than the track duration')
+                raise ValueError(
+                    'start_time must be an int with a value equal to, or greater than 0, and less than the track duration')
             options['startTime'] = start_time
 
         if end_time is not None:
             if not isinstance(end_time, int) or not 0 <= end_time <= track.duration:
-                raise ValueError('end_time must be an int with a value equal to, or greater than 0, and less than the track duration')
+                raise ValueError(
+                    'end_time must be an int with a value equal to, or greater than 0, and less than the track duration')
             options['endTime'] = end_time
 
         if no_replace is None:
@@ -330,13 +336,15 @@ class DefaultPlayer(BasePlayer):
         self.current = None
         self.queue = []
 
-    async def skip(self):
+    async def skip(self, amount: int = None):
         """
         Plays the next track in the queue, if any.
         Before skipping we disable repeat to prevent weird looping.
         If it was activated we activate it after skipping so the current song gets looped.
         """
         self.set_repeat(False)
+        if amount is not None:
+            self.queue = self.queue[amount:]
         await self.play()
 
     def set_repeat(self, repeat: bool):

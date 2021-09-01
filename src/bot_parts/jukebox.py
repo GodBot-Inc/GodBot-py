@@ -5,8 +5,7 @@ import asyncio
 import discord
 from typing import Tuple
 
-from data.custom_lavalink import \
-    lavalink  # git clone https://github.com/RasberryKai/Lavalink.py  Then rename it to custom_lavalink and put it into the data folder
+from data.custom_lavalink import lavalink
 from discord.ext.commands import Cog
 from discord_slash.cog_ext import cog_slash
 from discord_slash.model import ButtonStyle
@@ -643,7 +642,6 @@ class Jukebox(Cog):
             return
 
         await player.stop()
-        player.queue = []
         mbed = discord.Embed(title=":stop_button: Stopped Audio", description="", colour=discord.Colour.blue())
         await ctx.send(embed=mbed)
 
@@ -651,8 +649,7 @@ class Jukebox(Cog):
         name="skip",
         description="Skips the current song in the queue"
     )
-    async def _skip(self, ctx: SlashContext, amount: int):
-        #TODO: Add skip value so you can skip more than one song with one command
+    async def _skip(self, ctx: SlashContext):
         """
 
         Skips a song in the queue.
@@ -686,11 +683,69 @@ class Jukebox(Cog):
         mbed = discord.Embed(title="",
                              description=f":next_track: **Skipped** [{player.current.title}]({player.current.uri})",
                              colour=discord.Colour.blue())
+
         await player.skip()
         await ctx.send(embed=mbed)
         if loop_state:
             mbed = discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="",
                                  colour=discord.Colour.blue())
+        await ctx.send(embed=mbed)
+
+    @cog_slash(
+        name="skipto",
+        description="Skips to a specific song in the queue",
+        options=[
+            create_option(
+                name="index",
+                description="The index of a song that you want to skip to",
+                option_type=4,
+                required=True
+            )
+        ]
+    )
+    async def _skipto(self, ctx: SlashContext, index: int):
+        """
+
+        Skips to a song in the queue (you can skip multiple songs at once)
+
+        Parameters
+        ----------
+        ctx: Object passed to communicate with discord
+        index: The index that the method should skip into
+
+        """
+        if ctx.author.voice.channel is None:
+            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            return
+
+        player: lavalink.models.DefaultPlayer = self.client.player_manager.get(ctx.guild.id)
+        if player is None:
+            await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
+            return
+        if not player.is_playing and not player.paused:
+            await ctx.send(embed=await _get_embed("error", ":x: No music is playing or being paused"))
+            return
+
+        channel: int = player.fetch("channel")
+        if channel is None:
+            await ctx.send(embed=await _get_embed("error", ":x: Could not get the channel I'm currently in"))
+            return
+        if channel != ctx.author.voice.channel.id:
+            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
+            return
+
+        index = min(index, 0)
+        if index > len(player.queue):
+            await ctx.send(embed=await _get_embed("error", ":x: This song does not exist in the queue"))
+            return
+
+        await player.skip(index-1)
+        #TODO: Make the messages prettier
+        await ctx.send(embed=discord.Embed(title=f":next_track: **Skipped** to song number {index}"))
+
+        loop_state: bool = player.repeat
+        if loop_state:
+            await ctx.send(embed=discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="", colour=discord.Colour.blue()))
 
     @cog_slash(
         name="loop",
