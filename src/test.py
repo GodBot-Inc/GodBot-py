@@ -1,3 +1,3 @@
-tets_list = ["1", "2", "3"]
+url = "https://music.youtube.com/watch?v=MDHiw7OpFSg&list=RDAMVMQRxEubhdTQ0"
 
-print(tets_list[1:])
+print(url.split("music.youtube.com"))

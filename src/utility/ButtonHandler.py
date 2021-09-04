@@ -26,8 +26,9 @@ class EventHandler:
             """While 120 have not passed"""
             msg_json = await Api.get_message(ctx.channel.id, msg_id)
             if msg_json == {} or msg_json is None:
-                db.delte_search(ctx.guild.id, ctx.author.id, msg_id)
+                db.delete_search(ctx.guild.id, ctx.author.id, msg_id)
                 return
+            #TODO: component_id = msg_json["components"][0]["components"][1]["custom_id"]  KeyError: 'components'
             component_id = msg_json["components"][0]["components"][1]["custom_id"]
             if component_id == "closed_search_left":
                 return

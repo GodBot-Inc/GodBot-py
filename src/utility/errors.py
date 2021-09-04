@@ -3,6 +3,26 @@ class DuplicateEntry(Exception):
     pass
 
 
-class VideoNotFound(Exception):
+class GodBotError(Exception):
+    """Any Error raised from the GodBot Program will inherit from this class. You could call it the God Error :D"""
+    pass
+
+
+class VideoTypeNotFound(GodBotError):
+    """Gets raised when a video type could not be gotten"""
+    pass
+
+
+class YTApiError(Exception):
+    """Raised if something went wrong with the youtube API"""
+    pass
+
+
+class VideoNotFound(YTApiError):
     """Gets raised when a video from the play_playlist function is not found (automatically handled)"""
+    pass
+
+
+class PlaylistNotFound(YTApiError):
+    """Raised when a requested playlist is not found"""
     pass

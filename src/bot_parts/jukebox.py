@@ -13,7 +13,8 @@ from discord_slash import SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
-from src.utility.errors import VideoNotFound
+from discord_slash.error import RequestFailure
+from src.utility.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound
 from src.utility.ButtonHandler import EventHandler
 from src.utility.DatabaseCommunication import Database
 from src.utility.youtube_api import Api
@@ -192,7 +193,7 @@ class Jukebox(Cog):
         await EventHandler.start_timer(ctx, msg, msg.id)
 
     async def play_video(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, videoId: str,
-                         playlist: bool = False):
+                         playlist: bool = False, ytMusic: bool = False) -> bool:
         """
 
         This function plays a single video in discord.
@@ -205,15 +206,16 @@ class Jukebox(Cog):
         player: The player that plays the audio
         videoId: The YoutubeID of the video that's going to be played
         playlist: Whether to send a play message or not
+        ytMusic: Whether to search in YtMusic or not
 
         """
-        results: dict = await player.node.get_tracks(f"ytsearch: https://www.youtube.com/watch?v={videoId}")
-        if not results["tracks"] and not playlist:
-            await ctx.send(embed=await _get_embed("error",
-                                                  ":x: Could not get the song you want to play. Maybe it's an old url or the video is not public"))
-            return
-        elif not results["tracks"] and playlist:
-            raise VideoNotFound("Song was not found")
+        if ytMusic:
+            results: dict = await player.node.get_tracks(f"ytsearch: https://music.www.youtube.com/watch?v={videoId}")
+        else:
+            results: dict = await player.node.get_tracks(f"ytsearch: https://www.youtube.com/watch?v={videoId}")
+
+        if not results["tracks"]:
+            raise VideoNotFound
 
         track = results["tracks"][0]
         print(track)
@@ -273,7 +275,7 @@ class Jukebox(Cog):
             await player.play()
 
     async def play_playlist(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, playlistId: str = None,
-                            videoIds: tuple = None):
+                            videoIds: tuple = None, ytMusic: bool = False):
         """
 
         This method plays a playlist either from a playlistId or from several videoIds.
@@ -285,6 +287,7 @@ class Jukebox(Cog):
         player: The player that plays audio
         playlistId: The ID that youtube have that playlist as an identifier. Here used to get the videos from it. Defaults to None
         videoIds: If you want to play with this method and you don't have a playlistId put some videoIds in a tuple and pass it. Defaults to None
+        ytMusic: Whether to search the videos on ytMusic or not
 
         """
         yt = Api()
@@ -295,25 +298,41 @@ class Jukebox(Cog):
         if player.is_playing or player.paused:
             player_state = True
 
+        msg = await ctx.send(embed=discord.Embed(title="Processing Playlist", description="", colour=COLOUR))
+
         if playlistId is not None:
             yt.search_playlist_items(playlistId)
             if yt.found == 0:
-                await ctx.send(embed=await _get_embed("error", ":x: I could not resolve your playlist. Maybe it's an old url or it's private."))
-                return
+                raise PlaylistNotFound
+
             for x in range(0, yt.found):
                 try:
                     await self.play_video(ctx, player, yt.videoId[x], True)
-                    videos_found += 1
                 except VideoNotFound:
                     pass
+                else:
+                    videos_found += 1
+                    try:
+                        await msg.edit(embed=discord.Embed(title=f"Processing Playlist `{videos_found}`", description="",
+                                                           colour=COLOUR))
+                    except RequestFailure as e:
+                        print("Request Failure {}".format(e))
+                        pass
 
-        elif videoIds is not None:
+        if videoIds is not None:
             for x in range(0, videoIds):
                 try:
                     await self.play_video(ctx, player, videoIds[x], True)
-                    videos_found += 1
                 except VideoNotFound:
                     pass
+                else:
+                    videos_found += 1
+                    try:
+                        await msg.edit(embed=discord.Embed(title=f"Processing Playlist `{videos_found}`", description="",
+                                                           colour=COLOUR))
+                    except RequestFailure as e:
+                        print("Request Failure {}".format(e))
+                        pass
 
         if player_state:
             mbed = discord.Embed(
@@ -331,7 +350,8 @@ class Jukebox(Cog):
         mbed.set_thumbnail(url=yt.thumbnail[0])
         mbed.set_footer(icon_url=ctx.author.avatar_url,
                         text=f"Added by {ctx.author.display_name}#{ctx.author.discriminator}")
-        await ctx.send(embed=mbed)
+
+        await msg.edit(embed=mbed)
         yt.close()
 
     @cog_slash(
@@ -373,16 +393,51 @@ class Jukebox(Cog):
             tuple: 1. Element is either 'video' or 'playlist' 2. Element is the id (Both are strings)
 
             """
+            def get_platform(url: str):
+                #TODO: Program this function
+                """return yt, ytmusic, spotify, soundcloud etc."""
+                pass
+
+            print(f"Original Url {checked_url}")
             try:
-                playlist_url: str = checked_url.split("&list=")[1]
-            except IndexError:  # Video is not a playlist
-                videoId: str = checked_url.split("watch?v=")[1]
+                playlist_url: str = checked_url.split("list=")[1]
+
+            except IndexError:  # Url is not a playlist
+                try:
+                    videoId: str = checked_url.split("watch?v=")[1]
+                except IndexError:
+                    return VideoTypeNotFound
+
+                print(f"videoId {videoId}")
+                try:
+                    print(checked_url.split("music.youtube.com")[0])
+                    print(checked_url.split("youtube.com")[0])
+                    if checked_url.split("music.youtube.com")[0] == "https://":  # Url is a youtube music url
+                        return "musicVideo", videoId
+                    elif checked_url.split("youtube.com")[0] == "music":
+                        return "musicVideo", videoId
+                except IndexError:
+                    pass
+
                 return "video", videoId
+
             else:
+                print(f"playlistId {playlist_url}")
                 try:
                     playlist_Id: str = playlist_url.split("&")[0]
                 except IndexError:
-                    return None
+                    raise VideoTypeNotFound
+                else:
+                    try:
+                        print(checked_url.split("music.youtube.com")[0])
+                        print(checked_url.split("youtube.com")[0])
+                        if checked_url.split("music.youtube.com")[0] == "https://":  # Url is a youtube music url
+                            return "musicPlaylist", playlist_Id
+                        elif checked_url.split("youtube.com")[0] == "music":
+                            return "musicPlaylist", playlist_Id
+                    except IndexError:
+                        pass
+
                 return "playlist", playlist_Id
 
         await ctx.defer()
@@ -391,10 +446,11 @@ class Jukebox(Cog):
                 embed=await _get_embed(mbed_type="error", content=":x: You are not connected to a Voicechannel"))
             return
 
-        url_type: tuple = check_url(url)
-        if url_type is None:
-            await ctx.send(embed=await _get_embed(mbed_type="error",
-                                                  content=":x: Invalid Url. Please type in a video Url or a playlist Url from Youtube"))
+        try:
+            url_type: tuple = check_url(url)
+        except VideoTypeNotFound:
+            await ctx.send(embed=await _get_embed("error",
+                                                  ":x: Invalid Url. :white_check_mark: Supported:\n*Youtube Music playlist/video\n*Youtube playlist/video"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
@@ -413,10 +469,29 @@ class Jukebox(Cog):
             return
 
         if url_type[0] == "video":
-            await self.play_video(ctx, player, url_type[1])
+            print("normal video")
+            try:
+                await self.play_video(ctx, player, url_type[1])
+            except VideoNotFound:
+                await ctx.send(embed=await _get_embed("error",
+                                                      ":x: Player could not get the track so it can't be played :/ Sorry for that"))
+                return
+
+        elif url_type[0] == "musicVideo":
+            print("musicvideo")
+            try:
+                await self.play_video(ctx, player, url_type[1], ytMusic=True)
+            except VideoNotFound:
+                await ctx.send(embed=await _get_embed("error", ":x: Player could not get the track so it can't be played :/ Sorry for that"))
+                return
 
         elif url_type[0] == "playlist":
+            print("normal playlist")
             await self.play_playlist(ctx, player, url_type[1])
+
+        elif url_type[0] == "musicPlaylist":
+            print("music playlist")
+            await self.play_playlist(ctx, player, url_type[1], ytMusic=True)
 
     @cog_slash(
         name="playrandom",
@@ -465,6 +540,7 @@ class Jukebox(Cog):
 
         """
         await ctx.send(embed=await _get_embed("error", ":x: In Development"))
+        return
 
         if queuelength != 1:
             queuelength = max(min(queuelength, 25), 1)
@@ -739,13 +815,15 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: This song does not exist in the queue"))
             return
 
-        await player.skip(index-1)
-        #TODO: Make the messages prettier
+        await player.skip(index - 1)
+        # TODO: Make the messages prettier
         await ctx.send(embed=discord.Embed(title=f":next_track: **Skipped** to song number {index}"))
 
         loop_state: bool = player.repeat
         if loop_state:
-            await ctx.send(embed=discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="", colour=discord.Colour.blue()))
+            await ctx.send(
+                embed=discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="",
+                                    colour=discord.Colour.blue()))
 
     @cog_slash(
         name="loop",
@@ -882,8 +960,7 @@ class Jukebox(Cog):
         description="Shows the queue of the current player"
     )
     async def _queue(self, ctx):
-        #TODO: Make queue pages
-        # TODO: Make queue prettier
+        # TODO: Integrate buttons and pages into queue
         """
 
         Command to display the songs that are staged in the queue.
