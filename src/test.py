@@ -1,3 +1,15 @@
-url = "https://music.youtube.com/watch?v=MDHiw7OpFSg&list=RDAMVMQRxEubhdTQ0"
+import aiohttp
+from aiohttp.client_exceptions import InvalidURL
+import asyncio
 
-print(url.split("music.youtube.com"))
+
+async def nope():
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url) as resp:
+                pass
+        except InvalidURL:
+            print("Invalid Url")
+
+
+asyncio.run(run())

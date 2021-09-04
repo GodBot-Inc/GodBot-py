@@ -4,6 +4,7 @@ import asyncio
 
 import discord
 from typing import Tuple
+import aiohttp
 
 from data.custom_lavalink import lavalink
 from discord.ext.commands import Cog
@@ -13,8 +14,8 @@ from discord_slash import SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
-from discord_slash.error import RequestFailure
-from src.utility.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound
+from discord.errors import NotFound
+from src.utility.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
 from src.utility.ButtonHandler import EventHandler
 from src.utility.DatabaseCommunication import Database
 from src.utility.youtube_api import Api
@@ -303,6 +304,7 @@ class Jukebox(Cog):
         if playlistId is not None:
             yt.search_playlist_items(playlistId)
             if yt.found == 0:
+                await msg.delete()
                 raise PlaylistNotFound
 
             for x in range(0, yt.found):
@@ -315,7 +317,7 @@ class Jukebox(Cog):
                     try:
                         await msg.edit(embed=discord.Embed(title=f"Processing Playlist `{videos_found}`", description="",
                                                            colour=COLOUR))
-                    except RequestFailure as e:
+                    except NotFound as e:
                         print("Request Failure {}".format(e))
                         pass
 
@@ -330,7 +332,7 @@ class Jukebox(Cog):
                     try:
                         await msg.edit(embed=discord.Embed(title=f"Processing Playlist `{videos_found}`", description="",
                                                            colour=COLOUR))
-                    except RequestFailure as e:
+                    except NotFound as e:
                         print("Request Failure {}".format(e))
                         pass
 
@@ -351,7 +353,10 @@ class Jukebox(Cog):
         mbed.set_footer(icon_url=ctx.author.avatar_url,
                         text=f"Added by {ctx.author.display_name}#{ctx.author.discriminator}")
 
-        await msg.edit(embed=mbed)
+        try:
+            await msg.edit(embed=mbed)
+        except NotFound:
+            await ctx.send(embed=mbed)
         yt.close()
 
     @cog_slash(
@@ -378,7 +383,7 @@ class Jukebox(Cog):
 
         """
 
-        def check_url(checked_url: str) -> tuple:
+        async def check_url(checked_url: str) -> tuple:
             """
 
             A helper function to determine whether the given url is a video- or playlist-url.
@@ -390,55 +395,78 @@ class Jukebox(Cog):
 
             Returns
             -------
-            tuple: 1. Element is either 'video' or 'playlist' 2. Element is the id (Both are strings)
+            tuple: 1. Element ()
 
             """
-            def get_platform(url: str):
-                #TODO: Program this function
-                """return yt, ytmusic, spotify, soundcloud etc."""
-                pass
+            async def valid_url(validate_url: str) -> bool:
+                """
 
-            print(f"Original Url {checked_url}")
-            try:
-                playlist_url: str = checked_url.split("list=")[1]
+                A function that sends a get request to the given link so you can test if it is a valid one.
 
-            except IndexError:  # Url is not a playlist
+                Parameters
+                ----------
+                validate_url: The url that should be tested
+
+                Returns
+                -------
+                bool: Whether the website is callable or not
+
+                """
+                async with aiohttp.ClientSession() as session:
+                    try:
+                        async with session.get(validate_url) as resp:
+                            pass
+                    except aiohttp.client_exceptions.InvalidURL:
+                        return False
+                    else:
+                        return True
+
+            async def yt_url_processing(processed_url: str) -> Tuple[str, str, str]:
+                """
+
+                Parameters
+                ----------
+                processed_url: The url that should be processed
+
+                Returns
+                -------
+                Tuple[str, str, str]: first is the type of the link ("music"/"normal", "playlist"/"video", ID)
+
+                """
                 try:
-                    videoId: str = checked_url.split("watch?v=")[1]
-                except IndexError:
-                    return VideoTypeNotFound
+                    playlist_url: str = checked_url.split("list=")[1]
+                except IndexError:  # Url is not a playlist
+                    try:
+                        videoId: str = checked_url.split("watch?v=")[1]
+                    except IndexError:
+                        raise VideoTypeNotFound
 
-                print(f"videoId {videoId}")
-                try:
-                    print(checked_url.split("music.youtube.com")[0])
-                    print(checked_url.split("youtube.com")[0])
-                    if checked_url.split("music.youtube.com")[0] == "https://":  # Url is a youtube music url
-                        return "musicVideo", videoId
-                    elif checked_url.split("youtube.com")[0] == "music":
-                        return "musicVideo", videoId
-                except IndexError:
-                    pass
-
-                return "video", videoId
-
-            else:
-                print(f"playlistId {playlist_url}")
-                try:
-                    playlist_Id: str = playlist_url.split("&")[0]
-                except IndexError:
-                    raise VideoTypeNotFound
+                    if "music.youtube.com" in url:
+                        return "music", "video", videoId
+                    elif "youtube.com" in url:
+                        return "normal", "video", videoId
+                    else:
+                        raise VideoTypeNotFound
                 else:
                     try:
-                        print(checked_url.split("music.youtube.com")[0])
-                        print(checked_url.split("youtube.com")[0])
-                        if checked_url.split("music.youtube.com")[0] == "https://":  # Url is a youtube music url
-                            return "musicPlaylist", playlist_Id
-                        elif checked_url.split("youtube.com")[0] == "music":
-                            return "musicPlaylist", playlist_Id
+                        playlist_url: str = playlist_url.split("&")[0]
                     except IndexError:
                         pass
 
-                return "playlist", playlist_Id
+                    if "music.youtube.com" in url:
+                        return "music", "playlist", playlist_url
+                    elif "youtube.com" in url:
+                        return "normal", "playlist", playlist_url
+                    else:
+                        raise VideoTypeNotFound
+
+            if not await valid_url(url):
+                raise InvalidURL
+
+            if "youtube.com" in url:
+                return await yt_url_processing(url)
+            else:
+                raise InvalidURL
 
         await ctx.defer()
         if ctx.author.voice is None:
@@ -447,11 +475,12 @@ class Jukebox(Cog):
             return
 
         try:
-            url_type: tuple = check_url(url)
-        except VideoTypeNotFound:
+            url_type: tuple = await check_url(url)
+        except (InvalidURL, VideoTypeNotFound):
             await ctx.send(embed=await _get_embed("error",
                                                   ":x: Invalid Url. :white_check_mark: Supported:\n*Youtube Music playlist/video\n*Youtube playlist/video"))
             return
+        print(url_type)
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
@@ -463,35 +492,35 @@ class Jukebox(Cog):
         channel: int = player.fetch("channel")
         if channel is None:
             await ctx.send(embed=await _get_embed("error", ":x: I could not get the channel I'm in"))
-            return
         if channel != ctx.author.voice.channel.id:
             await ctx.send(embed=await _get_embed("error", ":x: We are not in the same channel"))
-            return
 
-        if url_type[0] == "video":
-            print("normal video")
+        if url_type[0] == "normal" and url_type[1] == "video":
             try:
-                await self.play_video(ctx, player, url_type[1])
+                await self.play_video(ctx, player, url_type[2])
             except VideoNotFound:
-                await ctx.send(embed=await _get_embed("error",
-                                                      ":x: Player could not get the track so it can't be played :/ Sorry for that"))
-                return
+                await ctx.send(embed=await _get_embed("error", ":x: Player could not get the track"))
 
-        elif url_type[0] == "musicVideo":
-            print("musicvideo")
+        elif url_type[0] == "music" and url_type[1] == "video":
             try:
-                await self.play_video(ctx, player, url_type[1], ytMusic=True)
+                await self.play_video(ctx, player, url_type[2], ytMusic=True)
             except VideoNotFound:
-                await ctx.send(embed=await _get_embed("error", ":x: Player could not get the track so it can't be played :/ Sorry for that"))
-                return
+                await ctx.send(embed=await _get_embed("error", ":x: Player could not get the track"))
 
-        elif url_type[0] == "playlist":
-            print("normal playlist")
-            await self.play_playlist(ctx, player, url_type[1])
+        elif url_type[0] == "normal" and url_type[1] == "playlist":
+            try:
+                await self.play_playlist(ctx, player, url_type[2])
+            except PlaylistNotFound:
+                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed"))
 
-        elif url_type[0] == "musicPlaylist":
-            print("music playlist")
-            await self.play_playlist(ctx, player, url_type[1], ytMusic=True)
+        elif url_type[0] == "music" and url_type[1] == "playlist":
+            try:
+                await self.play_playlist(ctx, player, url_type[2], ytMusic=True)
+            except PlaylistNotFound:
+                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed"))
+
+        else:
+            await ctx.send(embed=await _get_embed("error", ":x: I could not determine the link-type"))
 
     @cog_slash(
         name="playrandom",

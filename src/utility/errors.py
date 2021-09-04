@@ -13,6 +13,11 @@ class VideoTypeNotFound(GodBotError):
     pass
 
 
+class InvalidURL(GodBotError):
+    """Gets raised if the godbot finds an invalid url was passed"""
+    pass
+
+
 class YTApiError(Exception):
     """Raised if something went wrong with the youtube API"""
     pass
