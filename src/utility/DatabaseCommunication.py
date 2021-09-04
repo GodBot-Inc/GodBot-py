@@ -53,7 +53,7 @@ class Database(Singleton):
             "creation_date": time.strftime("%d.%m.%Y %H:%M:%S")
         })
 
-    def create_search(self, serverID: int, authorID: int, messageID: int, song_dictionary : dict):
+    def create_search(self, serverID: int, authorID: int, messageID: int, song_dictionary: dict):
         pprint.pprint(song_dictionary)
         self.searches.insert_one({
             "serverID": serverID,

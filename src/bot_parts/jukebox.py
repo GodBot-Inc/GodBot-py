@@ -765,7 +765,7 @@ class Jukebox(Cog):
         if loop_state:
             mbed = discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="",
                                  colour=discord.Colour.blue())
-        await ctx.send(embed=mbed)
+            await ctx.send(embed=mbed)
 
     @cog_slash(
         name="skipto",
