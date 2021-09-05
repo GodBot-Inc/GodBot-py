@@ -511,13 +511,13 @@ class Jukebox(Cog):
             try:
                 await self.play_playlist(ctx, player, url_type[2])
             except PlaylistNotFound:
-                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed"))
+                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
 
         elif url_type[0] == "music" and url_type[1] == "playlist":
             try:
                 await self.play_playlist(ctx, player, url_type[2], ytMusic=True)
             except PlaylistNotFound:
-                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed"))
+                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
 
         else:
             await ctx.send(embed=await _get_embed("error", ":x: I could not determine the link-type"))
