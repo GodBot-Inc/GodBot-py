@@ -167,8 +167,4 @@ class Api:
 
 if __name__ == "__main__":
     yt = Api()
-    yt.search_playlist_items("RDGMEMQ1dJ7wXfLlqCjwV0xfSNbAVMLq9c_MrtJp0")
-    print(yt.found)
-    pprint(yt.title)
-    pprint(yt.thumbnail)
-    pprint(yt.url)
+    yt.search_playlist_items("PLKfD8K0QKDy_wOV6s5JcW-uSlCbBAx7ZK")

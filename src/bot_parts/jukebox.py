@@ -211,9 +211,9 @@ class Jukebox(Cog):
 
         """
         if ytMusic:
-            results: dict = await player.node.get_tracks(f"ytsearch: https://music.www.youtube.com/watch?v={videoId}")
+            results: dict = await player.node.get_tracks(f"https://music.www.youtube.com/watch?v={videoId}")
         else:
-            results: dict = await player.node.get_tracks(f"ytsearch: https://www.youtube.com/watch?v={videoId}")
+            results: dict = await player.node.get_tracks(f"https://www.youtube.com/watch?v={videoId}")
 
         if not results["tracks"]:
             raise VideoNotFound
@@ -315,7 +315,8 @@ class Jukebox(Cog):
                 else:
                     videos_found += 1
                     try:
-                        await msg.edit(embed=discord.Embed(title=f"Processing Playlist Songs added: `{videos_found}`", description="",
+                        await msg.edit(embed=discord.Embed(title=f"Processing Playlist Songs added: `{videos_found}`",
+                                                           description="",
                                                            colour=COLOUR))
                     except NotFound as e:
                         print("Request Failure {}".format(e))
@@ -330,8 +331,9 @@ class Jukebox(Cog):
                 else:
                     videos_found += 1
                     try:
-                        await msg.edit(embed=discord.Embed(title=f"Processing Playlist `{videos_found}`", description="",
-                                                           colour=COLOUR))
+                        await msg.edit(
+                            embed=discord.Embed(title=f"Processing Playlist `{videos_found}`", description="",
+                                                colour=COLOUR))
                     except NotFound as e:
                         print("Request Failure {}".format(e))
                         pass
@@ -383,7 +385,7 @@ class Jukebox(Cog):
 
         """
 
-        async def check_url(checked_url: str) -> tuple:
+        async def check_url(checked_url: str) -> Tuple[str, str, str]:
             """
 
             A helper function to determine whether the given url is a video- or playlist-url.
@@ -395,9 +397,10 @@ class Jukebox(Cog):
 
             Returns
             -------
-            tuple: 1. Element ()
+            Tuple[str, str, str]: first is the type of the link ("music"/"normal", "playlist"/"video", ID)
 
             """
+
             async def valid_url(validate_url: str) -> bool:
                 """
 
@@ -511,13 +514,15 @@ class Jukebox(Cog):
             try:
                 await self.play_playlist(ctx, player, url_type[2])
             except PlaylistNotFound:
-                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
+                await ctx.send(
+                    embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
 
         elif url_type[0] == "music" and url_type[1] == "playlist":
             try:
                 await self.play_playlist(ctx, player, url_type[2], ytMusic=True)
             except PlaylistNotFound:
-                await ctx.send(embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
+                await ctx.send(
+                    embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
 
         else:
             await ctx.send(embed=await _get_embed("error", ":x: I could not determine the link-type"))
@@ -576,7 +581,8 @@ class Jukebox(Cog):
             )
         ]
     )
-    async def _playrandom(self, ctx: SlashContext, search: str, queuelength: int = 1, songfilter: str = "True", priority_level: str = "high"):
+    async def _playrandom(self, ctx: SlashContext, search: str, queuelength: int = 1, songfilter: str = "True",
+                          priority_level: str = "high"):
         """
 
         Parameters
@@ -814,6 +820,7 @@ class Jukebox(Cog):
             mbed = discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="",
                                  colour=discord.Colour.blue())
             await ctx.send(embed=mbed)
+        await player.equalizer
 
     @cog_slash(
         name="skipto",
@@ -866,7 +873,8 @@ class Jukebox(Cog):
         print(index)
         await player.skip(index - 1)
         # TODO: Make the messages prettier
-        await ctx.send(embed=discord.Embed(title=f":next_track: **Skipped** to song number {index}", colour=discord.Colour.blue()))
+        await ctx.send(
+            embed=discord.Embed(title=f":next_track: **Skipped** to song number {index}", colour=discord.Colour.blue()))
 
         loop_state: bool = player.repeat
         if loop_state:
@@ -1190,9 +1198,15 @@ class Jukebox(Cog):
                 embed=await _get_embed("error", ":x: Queue is empty so I can't remove anything from it"))
             return
 
-        if index - 1 > len(player.queue):
+        if index == 0:
+            await player.skip()
+            await ctx.send(embed=discord.Embed(title="",
+                                               description=f":next_track: **Skipped** [{player.current.title}]({player.current.uri})",
+                                               colour=discord.Colour.blue()))
+
+        elif index - 1 > len(player.queue):
             await ctx.send(embed=await _get_embed("error", ":x: There is no track with this index"))
-            return
+
         else:
             track: lavalink.AudioTrack = player.queue.pop(index - 1)
             mbed = discord.Embed(
