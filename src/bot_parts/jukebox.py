@@ -553,11 +553,30 @@ class Jukebox(Cog):
                         value="False"
                     )
                 ]
+            ),
+            create_option(
+                name="priority_level",
+                description="The priority level determines how strict to search (High -> public, Low -> random)",
+                option_type=3,
+                required=False,
+                choices=[
+                    create_choice(
+                        name="High",
+                        value="high"
+                    ),
+                    create_choice(
+                        name="Medium",
+                        value="medium"
+                    ),
+                    create_choice(
+                        name="Low",
+                        value="low"
+                    )
+                ]
             )
         ]
     )
-    async def _playrandom(self, ctx: SlashContext, search: str, queuelength: int = 1, songfilter: str = "True"):
-        # TODO: Add multisong shit
+    async def _playrandom(self, ctx: SlashContext, search: str, queuelength: int = 1, songfilter: str = "True", priority_level: str = "high"):
         """
 
         Parameters
@@ -989,7 +1008,6 @@ class Jukebox(Cog):
         description="Shows the queue of the current player"
     )
     async def _queue(self, ctx):
-        # TODO: Integrate buttons and pages into queue
         """
 
         Command to display the songs that are staged in the queue.
