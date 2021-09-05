@@ -78,12 +78,13 @@ class HelpCog(Cog):
 
     @staticmethod
     def jukebox() -> discord.Embed:
+        #TODO: Update jukebox functions
         embed = discord.Embed(
             title="Jukebox Help Menu",
             description="**In Development**",
             colour=COLOUR_CODE
         )
-        embed.set_thumbnail(url="https://overview-ow.com/rasberryKai/Icons/jukebox.png")
+        embed.set_thumbnail(url="https://overview-ow.com/rasberryKai/Icons/music.png")
         embed.add_field(name="`/play [youtube-link]`", value="Plays the requested song from the youtube url. If a song is already playing it will be added to the queue. **NOTE:** Playlists are not supported yet", inline=False)
         embed.add_field(name="`/pause`", value="Pauses the audio playing", inline=False)
         embed.add_field(name="`/resume`", value="Resumes the paused audio", inline=False)

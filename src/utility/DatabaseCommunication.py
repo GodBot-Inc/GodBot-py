@@ -1,7 +1,7 @@
 import pymongo
 from src.utility.errors import DuplicateEntry
 import time
-from CONSTANTS import USERNAME, PASSWORD
+from src.CONSTANTS import USERNAME, PASSWORD
 from random import randint
 import pprint
 
@@ -53,7 +53,7 @@ class Database(Singleton):
             "creation_date": time.strftime("%d.%m.%Y %H:%M:%S")
         })
 
-    def create_search(self, serverID: int, authorID: int, messageID: int, song_dictionary : dict):
+    def create_search(self, serverID: int, authorID: int, messageID: int, song_dictionary: dict):
         pprint.pprint(song_dictionary)
         self.searches.insert_one({
             "serverID": serverID,

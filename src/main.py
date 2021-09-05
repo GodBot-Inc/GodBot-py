@@ -37,7 +37,8 @@ async def check_muted():
 async def on_ready():
     """This gets triggered when the bot is started"""
     print("main is ready")
-    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/help"), status=discord.Status.online)
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="/help"),
+                                 status=discord.Status.online)
 
 
 @client.event
@@ -46,13 +47,14 @@ async def on_component(ctx):
     This gets triggered whenever an interaction is triggered (mostly button presses).
     Then it passes the ctx parameter to the methos handle from EventHandler which handles the interaction.
     """
-    asyncio.gather(EventHandler.handle(ctx))
+    await EventHandler.handle(ctx)
 
 
 @client.event
 async def on_guild_join(guild):
     """Here we save everything related to a server into the database"""
     db.create_server(guild.id, guild.name)
+
 
 @client.event
 async def on_guild_remove(server):
@@ -93,21 +95,25 @@ async def on_member_join(member):
             if category.name == "Prisons":
                 prison_exists = True
         if not prison_exists:
-            member.guild.create_category(name="Prisons")
+            category = member.guild.create_category(name="Prisons")
+        else:
+            category = get(member.guild.categories, name="Prisons")
+            if category is None:
+                return
         await member.guild.create_voice_channel(f"{member.display_name}'s Cell", category=category,
-                                                       overwrites=overwrites)
+                                                overwrites=overwrites)
     try:
         channel = await member.create_dm()
-        if not imprisoned:
-            mbed = discord.Embed(
-                title="Welcome!",
-                description="Welcome to {}.".format(member.guild.name),
-                colour=discord.Colour.blue()
-            )
         if imprisoned:
             mbed = discord.Embed(
                 title="Welcome!",
                 description="Welcome to {}. You are still imprisoned btw".format(member.guild.name),
+                colour=discord.Colour.blue()
+            )
+        else:
+            mbed = discord.Embed(
+                title="Welcome!",
+                description="Welcome to {}.".format(member.guild.name),
                 colour=discord.Colour.blue()
             )
         await channel.send(embed=mbed)
@@ -119,6 +125,11 @@ async def on_member_join(member):
 async def on_member_remove(member):
     """idk"""
     pass
+
+
+@client.command()
+async def ping(ctx):
+    await ctx.send(f"{round(client.latency, 1)}")
 
 
 @slash.slash(
@@ -139,7 +150,7 @@ async def invitelink(ctx, duration: int):
         mbed = discord.Embed(
             title="Failed",
             description="The duration cannot be longer than 120 minutes",
-            colour = discord.Colour.red()
+            colour=discord.Colour.red()
         )
         await ctx.send(embed=mbed)
         return
@@ -169,165 +180,165 @@ async def invitelink(ctx, duration: int):
     await ctx.send(embed=mbed)
 
 
-@slash.slash(
-    name="enable",
-    description="Enable a part of the bot",
-    options=[
-        create_option(
-            name="part_name",
-            description="Give the part you want to enable",
-            required=True,
-            option_type=3,
-            choices=[
-                create_choice(
-                    name="Jukebox",
-                    value="jukebox"
-                ),
-                create_choice(
-                    name="Moderation",
-                    value="moderation"
-                ),
-                create_choice(
-                    name="prison",
-                    value="prison"
-                ),
-                create_choice(
-                    name="Private Rooms",
-                    value="privaterooms"
-                )
-            ]
-        )
-    ]
-)
-async def enable(ctx, part_name: str):
-    """
-    Enables a part of the bot.
-    The bot is split up in parts. You can see them in the bot_parts folder.
-    You can enable and disable specific parts of the bot so you can basically configure it at your own will which is pretty sick.
-    """
-    if not ctx.author.guild_permissions.administrator:
-        mbed = discord.Embed(
-            title="Failed",
-            description="You do not have administrator privileges",
-            colour=discord.Colour.red()
-        )
-        await ctx.send(embed=mbed)
-        return
-    try:
-        client.load_extension(f"bot_parts.{part_name}")
-        mbed = discord.Embed(
-            title="Success",
-            description=f"{part_name} was successfully activated",
-            colour=discord.Colour.green()
-        )
-        await ctx.send(embed=mbed)
-    except:
-        mbed = discord.Embed(
-            title="Failed",
-            description=f"{part_name} could not be activated. It might already be",
-            colour=discord.Colour.red()
-        )
-        await ctx.send(embed=mbed)
-
-
-async def _remove_all_prisons(ctx):
-    """
-    This is a help_method for the disable command.
-    If the prison part is unloaded/disabled every prison entry gets deleted from the database.
-    """
-    prison_ids: list = db.find_prison_ids(ctx.guild.id)
-    if prison_ids == []:
-        return
-    error_list = []
-    for prison in prison_ids:
-        prison_channel = get(ctx.guild.channels, id=prison)
-        if prison_channel is None:
-            continue
-        try:
-            prison_channel.delete()
-        except discord.Forbidden:
-            error_list.append(f":x: I have not the permission to delete the channel {prison_channel.mention}")
-        except discord.NotFound:
-            error_list.append(f":x: I could not find the channel {prison_channel.mention} so I could not delete it")
-        except discord.HTTPException:
-            error_list.append(f":x: I could not delete the channel {prison_channel.mention}")
-    if error_list == []:
-        return
-    await ctx.send("{}".format("\n".join(error_list)))
-
-async def remove_all_privaterooms(ctx):
-    pass
-
-
-@slash.slash(
-    name="disable",
-    description="Disables a part of the bot",
-    options=[
-        create_option(
-            name="part_name",
-            description="Give the part you want to disable",
-            required=True,
-            option_type=3,
-            choices=[
-                create_choice(
-                    name="Jukebox",
-                    value="jukebox"
-                ),
-                create_choice(
-                    name="Moderation",
-                    value="moderation"
-                ),
-                create_choice(
-                    name="prison",
-                    value="prison"
-                ),
-                create_choice(
-                    name="Private Rooms",
-                    value="privaterooms"
-                )
-            ]
-        )
-    ]
-)
-async def disable(ctx, part_name: str):
-    """
-    Disables a part of the bot.
-    For an explanation look at enable.
-    """
-    if not ctx.author.guild_permissions.administrator:
-        mbed = discord.Embed(
-            title="Failed",
-            description="You do not have administrator privileges",
-            colour=discord.Colour.red()
-        )
-        await ctx.send(embed=mbed)
-        return
-    try:
-        client.unload_extension(f"bot_parts.{part_name}")
-    except:
-        mbed = discord.Embed(
-            title="Failed",
-            description=f"{part_name} could not be deactivated. It might already be",
-            colour=discord.Colour.red()
-        )
-        await ctx.send(embed=mbed)
-        return
-    mbed = discord.Embed(
-        title="Success",
-        description=f"{part_name} was successfully deactivated",
-        colour=discord.Colour.green()
-    )
-    await ctx.send(embed=mbed)
-    if part_name == "prison":
-        asyncio.gather(_remove_all_prisons(ctx))
-        db.clear_prisons(ctx.guild.id)
+# @slash.slash(
+#     name="enable",
+#     description="Enable a part of the bot",
+#     options=[
+#         create_option(
+#             name="part_name",
+#             description="Give the part you want to enable",
+#             required=True,
+#             option_type=3,
+#             choices=[
+#                 create_choice(
+#                     name="Jukebox",
+#                     value="jukebox"
+#                 ),
+#                 create_choice(
+#                     name="Moderation",
+#                     value="moderation"
+#                 ),
+#                 create_choice(
+#                     name="prison",
+#                     value="prison"
+#                 ),
+#                 create_choice(
+#                     name="Private Rooms",
+#                     value="privaterooms"
+#                 )
+#             ]
+#         )
+#     ]
+# )
+# async def enable(ctx, part_name: str):
+#     """
+#     Enables a part of the bot.
+#     The bot is split up in parts. You can see them in the bot_parts folder.
+#     You can enable and disable specific parts of the bot so you can basically configure it at your own will which is pretty sick.
+#     """
+#     if not ctx.author.guild_permissions.administrator:
+#         mbed = discord.Embed(
+#             title="Failed",
+#             description="You do not have administrator privileges",
+#             colour=discord.Colour.red()
+#         )
+#         await ctx.send(embed=mbed)
+#         return
+#     try:
+#         client.load_extension(f"bot_parts.{part_name}")
+#         mbed = discord.Embed(
+#             title="Success",
+#             description=f"{part_name} was successfully activated",
+#             colour=discord.Colour.green()
+#         )
+#         await ctx.send(embed=mbed)
+#     except:
+#         mbed = discord.Embed(
+#             title="Failed",
+#             description=f"{part_name} could not be activated. It might already be",
+#             colour=discord.Colour.red()
+#         )
+#         await ctx.send(embed=mbed)
+#
+#
+# async def _remove_all_prisons(ctx):
+#     """
+#     This is a help_method for the disable command.
+#     If the prison part is unloaded/disabled every prison entry gets deleted from the database.
+#     """
+#     prison_ids: list = db.find_prison_ids(ctx.guild.id)
+#     if prison_ids == []:
+#         return
+#     error_list = []
+#     for prison in prison_ids:
+#         prison_channel = get(ctx.guild.channels, id=prison)
+#         if prison_channel is None:
+#             continue
+#         try:
+#             prison_channel.delete()
+#         except discord.Forbidden:
+#             error_list.append(f":x: I have not the permission to delete the channel {prison_channel.mention}")
+#         except discord.NotFound:
+#             error_list.append(f":x: I could not find the channel {prison_channel.mention} so I could not delete it")
+#         except discord.HTTPException:
+#             error_list.append(f":x: I could not delete the channel {prison_channel.mention}")
+#     if error_list == []:
+#         return
+#     await ctx.send("{}".format("\n".join(error_list)))
+#
+#
+# async def remove_all_privaterooms(ctx):
+#     pass
+#
+#
+# @slash.slash(
+#     name="disable",
+#     description="Disables a part of the bot",
+#     options=[
+#         create_option(
+#             name="part_name",
+#             description="Give the part you want to disable",
+#             required=True,
+#             option_type=3,
+#             choices=[
+#                 create_choice(
+#                     name="Jukebox",
+#                     value="jukebox"
+#                 ),
+#                 create_choice(
+#                     name="Moderation",
+#                     value="moderation"
+#                 ),
+#                 create_choice(
+#                     name="prison",
+#                     value="prison"
+#                 ),
+#                 create_choice(
+#                     name="Private Rooms",
+#                     value="privaterooms"
+#                 )
+#             ]
+#         )
+#     ]
+# )
+# async def disable(ctx, part_name: str):
+#     """
+#     Disables a part of the bot.
+#     For an explanation look at enable.
+#     """
+#     if not ctx.author.guild_permissions.administrator:
+#         mbed = discord.Embed(
+#             title="Failed",
+#             description="You do not have administrator privileges",
+#             colour=discord.Colour.red()
+#         )
+#         await ctx.send(embed=mbed)
+#         return
+#     try:
+#         client.unload_extension(f"bot_parts.{part_name}")
+#     except:
+#         mbed = discord.Embed(
+#             title="Failed",
+#             description=f"{part_name} could not be deactivated. It might already be",
+#             colour=discord.Colour.red()
+#         )
+#         await ctx.send(embed=mbed)
+#         return
+#     mbed = discord.Embed(
+#         title="Success",
+#         description=f"{part_name} was successfully deactivated",
+#         colour=discord.Colour.green()
+#     )
+#     await ctx.send(embed=mbed)
+#     if part_name == "prison":
+#         asyncio.gather(_remove_all_prisons(ctx))
+#         db.clear_prisons(ctx.guild.id)
 
 
 """Loads all cogs"""
 for file in os.listdir("bot_parts"):
     if file.endswith(".py"):
         client.load_extension(f"bot_parts.{file[:-3]}")
-
 
 if __name__ == "__main__":
     try:
