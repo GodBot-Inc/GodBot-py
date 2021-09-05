@@ -315,7 +315,7 @@ class Jukebox(Cog):
                 else:
                     videos_found += 1
                     try:
-                        await msg.edit(embed=discord.Embed(title=f"Processing Playlist `{videos_found}`", description="",
+                        await msg.edit(embed=discord.Embed(title=f"Processing Playlist Songs added: `{videos_found}`", description="",
                                                            colour=COLOUR))
                     except NotFound as e:
                         print("Request Failure {}".format(e))
@@ -842,7 +842,7 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
             return
 
-        player: lavalink.models.DefaultPlayer = self.client.player_manager.get(ctx.guild.id)
+        player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
             await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
             return
@@ -858,14 +858,15 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
             return
 
-        index = min(index, 0)
+        index = max(index, 0)
         if index > len(player.queue):
             await ctx.send(embed=await _get_embed("error", ":x: This song does not exist in the queue"))
             return
 
+        print(index)
         await player.skip(index - 1)
         # TODO: Make the messages prettier
-        await ctx.send(embed=discord.Embed(title=f":next_track: **Skipped** to song number {index}"))
+        await ctx.send(embed=discord.Embed(title=f":next_track: **Skipped** to song number {index}", colour=discord.Colour.blue()))
 
         loop_state: bool = player.repeat
         if loop_state:

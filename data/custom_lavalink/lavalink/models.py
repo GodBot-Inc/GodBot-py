@@ -344,7 +344,9 @@ class DefaultPlayer(BasePlayer):
         """
         self.set_repeat(False)
         if amount is not None:
+            print(self.queue)
             self.queue = self.queue[amount:]
+            print(self.queue)
         await self.play()
 
     def set_repeat(self, repeat: bool):
