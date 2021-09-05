@@ -820,7 +820,6 @@ class Jukebox(Cog):
             mbed = discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="",
                                  colour=discord.Colour.blue())
             await ctx.send(embed=mbed)
-        await player.equalizer
 
     @cog_slash(
         name="skipto",
