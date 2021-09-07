@@ -1,16 +1,12 @@
-import asyncio
 from asyncio import sleep
-from pprint import pprint
 from time import time
 
 import discord
-from discord.utils import get
 from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 
-from src.utility.DatabaseCommunication import Database
-from src.utility.discord_api import Api
+from utility.DatabaseCommunication import Database
 
 db = Database()
 
@@ -28,7 +24,6 @@ class EventHandler:
             if msg_json == {} or msg_json is None:
                 db.delete_search(ctx.guild.id, ctx.author.id, msg_id)
                 return
-            #TODO: component_id = msg_json["components"][0]["components"][1]["custom_id"]  KeyError: 'components'
             component_id = msg_json["components"][0]["components"][1]["custom_id"]
             if component_id == "closed_search_left":
                 return

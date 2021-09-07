@@ -1,15 +1,14 @@
-import asyncio
 import os
 
 import discord
 from discord.ext import commands
 from discord.utils import get
 from discord_slash import SlashCommand
-from discord_slash.utils.manage_commands import create_choice, create_option
+from discord_slash.utils.manage_commands import create_option
 
 from CONSTANTS import TOKEN
-from src.utility.ButtonHandler import EventHandler
-from src.utility.DatabaseCommunication import Database
+from utility.ButtonHandler import EventHandler
+from utility.DatabaseCommunication import Database
 
 # Windows: go into systemvariables and add variable named PYTHONPATH with path to src
 # MacOS: `nano ~/.bash_profile` add line `export PYTHONPATH="directory_to_src"`

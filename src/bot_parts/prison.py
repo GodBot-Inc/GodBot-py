@@ -4,8 +4,8 @@ from discord.utils import get
 from discord_slash import SlashContext
 from discord_slash.utils.manage_commands import create_option
 from discord_slash.cog_ext import cog_slash
-from src.utility.DatabaseCommunication import Database
-from src.utility.errors import DuplicateEntry
+from utility.DatabaseCommunication import Database
+from utility.errors import DuplicateEntry
 
 
 ICON_LINK = r"https://www.notion.so/image/https%3A%2F%2Fstatic.thenounproject.com%2Fpng%2F394344-200.png?table=block&id=f4e81391-aa89-4d2d-b74f-75dd5580d072&spaceId=06bdd9c6-b9a9-4b95-a45e-1905629fac2c&width=250&userId=ef09ee7a-849b-43af-a22f-d0c7e11e15db&cache=v2"

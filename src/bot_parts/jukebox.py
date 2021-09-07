@@ -15,10 +15,10 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 from discord.errors import NotFound
-from src.utility.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
-from src.utility.ButtonHandler import EventHandler
-from src.utility.DatabaseCommunication import Database
-from src.utility.youtube_api import Api
+from utility.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
+from utility.ButtonHandler import EventHandler
+from utility.DatabaseCommunication import Database
+from utility.youtube_api import Api
 
 COLOUR = 0xC2842F
 
@@ -129,7 +129,7 @@ class Jukebox(Cog):
             )
         ]
     )
-    async def _search(self, ctx: SlashContext, *, search: str, results: int = 8, songfilter: str = "True"):
+    async def _search(self, ctx: SlashContext, search: str, results: int = 8, songfilter: str = "True"):
         """A search function with that you can search for Youtube Videos withing discord
 
         Args:
@@ -179,7 +179,7 @@ class Jukebox(Cog):
         current = song_dictionary[str(page)]
         mbed = discord.Embed(
             title="`{}`".format(current["title"]),
-            description=":eye_in_speech_bubble: {}\n{}/{}".format(
+            description=":eye: {}\n{}/{}".format(
                 song_dictionary["1"]["views"],
                 page,
                 len(song_dictionary)
@@ -696,8 +696,7 @@ class Jukebox(Cog):
             return
 
         await player.set_pause(True)
-        mbed = discord.Embed(title=":pause_button: Paused audio", description="", colour=discord.Colour.blue())
-        await ctx.send(embed=mbed)
+        await ctx.send(embed=discord.Embed(title=":pause_button: Paused Audio", description="", colour=discord.Colour.blue()))
 
     @cog_slash(
         name="resume",
@@ -870,10 +869,10 @@ class Jukebox(Cog):
             return
 
         print(index)
+        song: lavalink.models.AudioTrack = player.queue[index-1]
         await player.skip(index - 1)
-        # TODO: Make the messages prettier
         await ctx.send(
-            embed=discord.Embed(title=f":next_track: **Skipped** to song number {index}", colour=discord.Colour.blue()))
+            embed=discord.Embed(title=f":next_track: **Skipped** to song number `[{song.title}]({song.uri})`", colour=discord.Colour.blue()))
 
         loop_state: bool = player.repeat
         if loop_state:
@@ -1054,7 +1053,6 @@ class Jukebox(Cog):
             return
 
         result_list.append(("`Now playing`", "[{}]({})".format(player.current.title, player.current.uri)))
-        # TODO: program the string shit more efficient
         if not queue == []:
             for x in range(len(queue)):
                 result_list.append(("`{}`".format(x + 1), "[{}]({})".format(queue[x].title, queue[x].uri)))
@@ -1065,11 +1063,17 @@ class Jukebox(Cog):
                 continue
             final_string = final_string + "\n{} {}".format(x[0], x[1])
 
+        #TODO: Use mbed.add_field instead of a fucking long String
+
         mbed = discord.Embed(
             title="Queue",
-            description="{}".format(final_string),
+            description="",
             colour=COLOUR
         )
+
+        for x in range(len(queue)):
+            mbed.add_field(name=f"__{x+1}__", value=f"[{queue[x].title}]({queue[x].uri})")
+
         await ctx.send(embed=mbed)
 
     @cog_slash(
@@ -1121,7 +1125,7 @@ class Jukebox(Cog):
             colour=COLOUR
         )
         mbed.set_thumbnail(url=yt.thumbnail[0])
-        mbed.add_field(name=":eye_in_speech_bubble:", value=f"`{yt.views[0]}`")
+        mbed.add_field(name=":eye:", value=f"`{yt.views[0]}`")
 
         if not yt.likes[0]:
             mbed.add_field(name=":thumbsup:", value="`-`")

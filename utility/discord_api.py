@@ -17,7 +17,6 @@ class Api:
                 await asyncio.sleep(0.5)  # sleeps half a second to reduce the number of calls a second
                 return await r.json()
 
-
-if __name__ == "__main__":
-    msg = asyncio.run(Api.get_message(867677864407859240, 869118811670982676))
-    print(msg["components"][0]["components"][0]["custom_id"])
+    @staticmethod
+    async def get_channel():
+        pass
