@@ -1,10 +1,9 @@
 import discord
-from discord.ext import commands
-from discord.ext.commands import Cog, has_permissions
+from discord.ext.commands import Cog
 from discord_slash import SlashContext
-from discord_slash.utils.manage_commands import create_choice, create_option
+from discord_slash.utils.manage_commands import create_option
 from discord_slash.cog_ext import cog_slash
-from utility.DatabaseCommunication import Database
+from src.DatabaseCommunication import Database
 
 
 ICON_LINK = r"https://notion-emojis.s3-us-west-2.amazonaws.com/v0/svg-twitter/1f574-fe0f.svg"

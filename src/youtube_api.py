@@ -92,11 +92,7 @@ class Api:
                 q=keyword,
                 type="video"
             )
-        try:
-            response = r.execute()
-        except HttpError as e:
-            print(f"Could not find {keyword} Error Details {e}")
-            return "Error"
+        response: dict = r.execute()
         self.found = len(response["items"])
         for x in range(0, len(response["items"])):
             self.title.append(response["items"][x]["snippet"]["title"])

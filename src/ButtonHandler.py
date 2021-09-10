@@ -6,7 +6,8 @@ from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 
-from utility.DatabaseCommunication import Database
+from src.DatabaseCommunication import Database
+from src.discord_api.messages import get
 
 db = Database()
 
@@ -20,7 +21,7 @@ class EventHandler:
         start = time()
         while time() - start < 300:
             """While 120 have not passed"""
-            msg_json = await Api.get_message(ctx.channel.id, msg_id)
+            msg_json = await get(ctx.channel.id, msg_id)
             if msg_json == {} or msg_json is None:
                 db.delete_search(ctx.guild.id, ctx.author.id, msg_id)
                 return
@@ -32,7 +33,6 @@ class EventHandler:
         await msg.edit(components=[ar])
         db.delete_search(ctx.guild.id, ctx.author.id, msg_id)
 
-
     @staticmethod
     async def handle(ctx):
         """This function is called if an Event (Button Press) should be handled"""
@@ -40,7 +40,6 @@ class EventHandler:
             await EventHandler._on_right(ctx)
         elif ctx.custom_id == "search_left":
             await EventHandler._on_left(ctx)
-
 
     @staticmethod
     async def __get_actionrow(tag: str, url: str=None):
@@ -105,7 +104,6 @@ class EventHandler:
             ]
             return create_actionrow(*buttons)
 
-
     @staticmethod
     async def __get_embed(ctx, song_dictionary: dict, cursor: int, tag: str=None):
         """This is an exclusive function to the EventHandler"""
@@ -122,7 +120,6 @@ class EventHandler:
             mbed.set_thumbnail(url=song_dictionary[str(cursor)]["thumbnail"])
             mbed.set_footer(icon_url=ctx.author.avatar_url, text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
             return mbed
-
 
     @staticmethod
     async def _on_left(ctx):
@@ -141,7 +138,6 @@ class EventHandler:
         ar = await EventHandler.__get_actionrow("normal", search["songs"][str(search["cursor"] - 1)]["url"])
         await ctx.edit_origin(embed=mbed, components=[ar])
         db.decrease_search_cursor(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
-
 
     @staticmethod
     async def _on_right(ctx):

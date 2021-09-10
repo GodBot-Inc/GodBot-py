@@ -1,5 +1,5 @@
 import pymongo
-from utility.errors import DuplicateEntry
+from src.errors import DuplicateEntry
 import time
 from src.CONSTANTS import USERNAME, PASSWORD
 import pprint

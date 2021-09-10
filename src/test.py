@@ -1,19 +1,22 @@
-import requests
-import basehash
+from discord_api import messages
 
-# url = "https://discord.com/api/v8/channels/867677864407859240/webhooks"
-
-# json = {
-#     "name": "GodHook",
-#     "avatar": "104b5ea18ecd28f07a7d8760389189e9"
-# }
-
-headers = {
-    "Authorization": "Bot ODQyMzg3OTY3NTEwMzE1MDA5.YJ0k7g.twiQk0Y9qCp2ZMae-NEBGwD0K1E"
-}
-
-# print(requests.post(url, headers=headers, json=json).json())
-
-url = "https://discord.com/api/v8/users/842387967510315009"
-
-print(requests.get(url, headers=headers).json())
+print(messages.send(867677864407859240,
+                    content="I'm content",
+                    embed={
+                        "title": "I'm a title",
+                        "description": "I'm a description",
+                        "colour": 0x11111
+                    },
+                    components=[
+                        {
+                            "type": 1,
+                            "components": [
+                                {
+                                    "type": 2,
+                                    "label": "Click me and nothing will happen",
+                                    "style": 1,
+                                    "custom_id": "click_one"
+                                }
+                            ]
+                        }
+                    ]))

@@ -15,10 +15,12 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 from discord.errors import NotFound
-from utility.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
-from utility.ButtonHandler import EventHandler
-from utility.DatabaseCommunication import Database
-from utility.youtube_api import Api
+from src.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
+from src.ButtonHandler import EventHandler
+from src.DatabaseCommunication import Database
+from src.youtube_api import Api
+import jukebox_logic
+
 
 COLOUR = 0xC2842F
 
@@ -142,21 +144,8 @@ class Jukebox(Cog):
 
         results = max(min(results, 12), 2)
 
-        yt = Api()
-        if songfilter == "True":
-            error: str = yt.search(search, results, True)
-        else:
-            error: str = yt.search(search, results, False)
-        if error == "Error":
-            await ctx.send(embed=await _get_embed(mbed_type="error",
-                                                  content=":x: Something went wrong while processing the songs you searched for. **Please try again**"))
-            return
+        song_dictionary: dict = await jukebox_logic.search(search, results, songfilter)
 
-        song_dictionary = {}
-        for x in range(yt.found):
-            song_dictionary[str(x + 1)] = {"title": yt.title[x], "thumbnail": yt.thumbnail[x], "url": yt.url[x],
-                                           "views": yt.views[x]}
-        yt.close()
         page = 1
         buttons = [
             create_button(
@@ -179,13 +168,11 @@ class Jukebox(Cog):
         current = song_dictionary[str(page)]
         mbed = discord.Embed(
             title="`{}`".format(current["title"]),
-            description=":eye: {}\n{}/{}".format(
-                song_dictionary["1"]["views"],
-                page,
-                len(song_dictionary)
-            ),
+            description="",
             colour=COLOUR
         )
+        mbed.add_field(name=":eye:", value="{}".format(song_dictionary["1"]["views"]))
+        mbed.add_field(name="Page:", value="{}/{}".format(page, len(song_dictionary)))
         mbed.set_thumbnail(url=song_dictionary[str(page)]["thumbnail"])
         mbed.set_footer(icon_url=ctx.author.avatar_url,
                         text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
