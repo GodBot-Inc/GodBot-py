@@ -3,7 +3,7 @@ from discord.utils import get
 from discord.ext.commands import Cog
 from discord_slash import SlashContext
 from discord_slash.cog_ext import cog_slash
-from src.DatabaseCommunication import Database
+from src.discord.DatabaseCommunication import Database
 from pprint import pprint
 
 

@@ -19,18 +19,30 @@ msg_embed_example = {
     "embed": {
         "title": "Hello I'm a title",  # Shows up at the top of the embed (bigger than description)
         "description": "I'm describing things :D",  # Description shows up in the embed (smaller than title)
-        "colour": 0x111111  # Hash Colour
+        "colour": 111111,  # Hash Colour
+        "fields": [
+            {
+                "name": "Queue",
+                "description": "Songs that are going to be played",
+                "inline": False
+            }
+        ]
     }
 }
 
-from src.discord_api import messages
+from src.discord.discord_api import messages
 
 print(messages.send(867677864407859240,
                     content="I'm content",
                     embed={
                         "title": "I'm a title",
                         "description": "I'm a description",
-                        "colour": 0x11111
+                        "colour": 0x11111,
+                        "fields": [
+                            {
+                                ""
+                            }
+                        ]
                     },
                     components=[
                         {

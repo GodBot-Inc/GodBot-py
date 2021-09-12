@@ -1,5 +1,5 @@
 from discord.ext.commands import Cog
-from src.DatabaseCommunication import Database
+from src.discord.DatabaseCommunication import Database
 
 
 ICON_LINK = r"https://notion-emojis.s3-us-west-2.amazonaws.com/v0/svg-twitter/1f512.svg"

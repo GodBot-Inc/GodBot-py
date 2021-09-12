@@ -1,5 +1,5 @@
 from . import *
-from src.CONSTANTS import TOKEN
+from src.discord.CONSTANTS import TOKEN
 
 
 def status_code_check(response):

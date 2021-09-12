@@ -7,8 +7,8 @@ from discord_slash import SlashCommand
 from discord_slash.utils.manage_commands import create_option
 
 from CONSTANTS import TOKEN
-from src.ButtonHandler import EventHandler
-from src.DatabaseCommunication import Database
+from src.discord.ButtonHandler import EventHandler
+from src.discord.DatabaseCommunication import Database
 
 # Windows: go into systemvariables and add variable named PYTHONPATH with path to src
 # MacOS: `nano ~/.bash_profile` add line `export PYTHONPATH="directory_to_src"`

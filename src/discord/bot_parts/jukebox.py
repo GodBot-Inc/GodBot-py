@@ -15,12 +15,11 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 from discord.errors import NotFound
-from src.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
-from src.ButtonHandler import EventHandler
-from src.DatabaseCommunication import Database
-from src.youtube_api import Api
-import jukebox_logic
-
+from src.discord.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
+from src.discord.ButtonHandler import EventHandler
+from src.discord.DatabaseCommunication import Database
+from src.discord.youtube_api import Api
+from src.discord import jukebox_logic
 
 COLOUR = 0xC2842F
 
@@ -1027,10 +1026,7 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
             return
 
-        result_list: list = []
-        queue: list = player.queue
-        print(player.current)
-        if queue == [] and player.current is None:
+        if player.queue == [] and player.current is None:
             mbed = discord.Embed(
                 title="Queue",
                 description="**Empty**",
@@ -1039,29 +1035,37 @@ class Jukebox(Cog):
             await ctx.send(embed=mbed)
             return
 
-        result_list.append(("`Now playing`", "[{}]({})".format(player.current.title, player.current.uri)))
-        if not queue == []:
-            for x in range(len(queue)):
-                result_list.append(("`{}`".format(x + 1), "[{}]({})".format(queue[x].title, queue[x].uri)))
-
-        final_string: str = "{} {}".format(result_list[0][0], result_list[0][1])
-        for x in result_list:
-            if x == result_list[0]:
-                continue
-            final_string = final_string + "\n{} {}".format(x[0], x[1])
-
         #TODO: Use mbed.add_field instead of a fucking long String
 
-        mbed = discord.Embed(
-            title="Queue",
-            description="",
-            colour=COLOUR
-        )
+        big_dict: dict = {1: {
+            "title": "Queue",
+            "description": "",
+            "colour": COLOUR,
+            "fields": [
+                {
+                    "name": "`Now playing`",
+                    "value": f"__[{player.current.title}]({player.current.uri})__",
+                    "inline": False
+                }
+            ]
+        }}
 
-        for x in range(len(queue)):
-            mbed.add_field(name=f"__{x+1}__", value=f"[{queue[x].title}]({queue[x].uri})")
+        for x in range(len(player.queue)):
+            if x % 10 == 0:
+                big_dict[int(x/10)+2] = {
+                    "title": "Queue",
+                    "description": "",
+                    "colour": COLOUR,
+                    "fields": []
+                }
+            num = list(x[x:])
+            big_dict[num]["fields"].append({
+                "name": f"`{x+1}`",
+                "value": f"__[{player.queue[x].title}]({player.queue[x].uri})__",
+                "inline": False
+            })
 
-        await ctx.send(embed=mbed)
+        # await ctx.send(embed=mbed)
 
     @cog_slash(
         name="current",

@@ -1,5 +1,5 @@
 from discord.ext.commands import Cog
-from src.DatabaseCommunication import Database
+from src.discord.DatabaseCommunication import Database
 
 
 class Stats(Cog):

@@ -1,12 +1,6 @@
-import discord
-import src.discord_api
-from src.youtube_api import Api
+from src.discord.youtube_api import Api
 from googleapiclient.errors import HttpError
-from src.errors import *
-from discord_slash.utils.manage_components import (create_actionrow,
-                                                   create_button)
-from discord_slash.model import ButtonStyle
-from src.DatabaseCommunication import Database
+from src.discord.errors import *
 
 COLOUR = 0xC2842F
 
