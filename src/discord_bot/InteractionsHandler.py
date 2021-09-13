@@ -6,8 +6,8 @@ from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 
-from src.discord.DatabaseCommunication import Database
-from src.discord.discord_api import messages
+from src.discord_bot.DatabaseCommunication import Database
+from src.discord_bot.discord_api import messages
 
 db = Database()
 

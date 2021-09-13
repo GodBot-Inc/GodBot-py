@@ -1,5 +1,5 @@
 from . import *
-from src.Api import main
+from src.Api import flask_api
 
 COLOUR = 0xC2842F
 
@@ -38,7 +38,8 @@ class Jukebox(Cog):
         self.client.music.add_node(LAVALINK_IP, LAVALINK_PORT, LAVALINK_PW, "eu", "music-node")
         self.client.add_listener(self.client.music.voice_update_handler, "on_socket_response")
         self.client.music.add_event_hook(self.track_hook)
-        main.start_server(client)
+        self.logic = jukebox_logic.ClientLogic(client)
+        flask_api.start_server()
         print("Jukebox extension loaded")
 
     async def track_hook(self, event):

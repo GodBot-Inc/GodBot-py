@@ -1,7 +1,7 @@
 import pymongo
-from src.discord.errors import DuplicateEntry
+from src.discord_bot.errors import DuplicateEntry
 import time
-from src.discord.CONSTANTS import USERNAME, PASSWORD
+from src.discord_bot.CONSTANTS import USERNAME, PASSWORD
 import pprint
 
 
