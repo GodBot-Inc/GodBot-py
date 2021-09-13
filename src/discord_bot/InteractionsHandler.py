@@ -7,7 +7,7 @@ from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 
 from src.discord.DatabaseCommunication import Database
-from src.discord.discord_api.messages import get
+from src.discord.discord_api import messages
 
 db = Database()
 
@@ -21,17 +21,17 @@ class EventHandler:
         start = time()
         while time() - start < 300:
             """While 120 have not passed"""
-            msg_json = await get(ctx.channel.id, msg_id)
+            msg_json = messages.get(ctx.channel.id, msg_id)
             if msg_json == {} or msg_json is None:
-                db.delete_search(ctx.guild.id, ctx.author.id, msg_id)
+                db.delete_search(msg_id)
                 return
             component_id = msg_json["components"][0]["components"][1]["custom_id"]
             if component_id == "closed_search_left":
                 return
-            await sleep(30)  # Cooldown so we don't request the discord API too often
+            await sleep(30)  # Cooldown so we don't request the discord_bot API too often
         ar = await EventHandler.__get_actionrow("expired")
         await msg.edit(components=[ar])
-        db.delete_search(ctx.guild.id, ctx.author.id, msg_id)
+        db.delete_search(msg_id)
 
     @staticmethod
     async def handle(ctx):

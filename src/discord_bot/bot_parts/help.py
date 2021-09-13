@@ -10,7 +10,7 @@ COLOUR_CODE=0x0C4FEB
 
 
 class HelpCog(Cog):
-    """This is the help part so users can get an introduction to the bot in discord"""
+    """This is the help part so users can get an introduction to the bot in discord_bot"""
     def __init__(self, client):
         self.client = client
 

@@ -14,7 +14,7 @@ class InvalidFormBody(DiscordApiError):
 
 
 class ConnectionError(DiscordApiError):
-    """Get's raised if the discord Api has problems"""
+    """Get's raised if the discord_bot Api has problems"""
     pass
 
 

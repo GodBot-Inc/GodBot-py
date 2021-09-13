@@ -29,7 +29,7 @@ class Client:
         The class that should be used for the player. Defaults to ``DefaultPlayer``.
         Do not change this unless you know what you are doing!
     regions: Optional[:class:`dict`]
-        A dictionary representing region -> discord endpoint. You should only
+        A dictionary representing region -> discord_bot endpoint. You should only
         change this if you know what you're doing and want more control over
         which regions handle specific locations. Defaults to `None`.
     connect_back: Optional[:class:`bool`]

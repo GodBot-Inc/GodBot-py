@@ -24,6 +24,7 @@ class Database(Singleton):
         self.members = self.db.Members
         self.prisons = self.db.Prisons
         self.searches = self.db.Searches
+        self.queues = self.db.Queues
 
     def create_server(self, serverID: int, server_name: str):
         """Creates a server entry in the MongoDB Database (duplicates are impossible)"""
@@ -53,13 +54,19 @@ class Database(Singleton):
         })
 
     def create_search(self, serverID: int, authorID: int, messageID: int, song_dictionary: dict):
-        pprint.pprint(song_dictionary)
         self.searches.insert_one({
             "serverID": serverID,
             "authorID": authorID,
             "messageID": messageID,
             "songs": song_dictionary,
             "cursor": 1
+        })
+
+    def create_queue(self, serverID: int, messageID: int, queue_dict: dict):
+        self.queues.insert_one({
+            "serverID": serverID,
+            "messageID": messageID,
+            "queue_pages": queue_dict
         })
 
     def update_server_name(self, serverID: int, server_name: str):
@@ -77,8 +84,11 @@ class Database(Singleton):
     def delete_prison(self, serverID: int, memberID: int):
         self.prisons.delete_one({"serverID": serverID, "memberID": memberID})
 
-    def delete_search(self, serverID: int, authorID: int, messageID: int):
-        self.searches.delete_one({"serverID": serverID, "authorID": authorID, "messageID": messageID})
+    def delete_search(self, messageID: int):
+        self.searches.delete_one({"messageID": messageID})
+
+    def delete_queue(self, messageID: int):
+        self.queues.delete_one({"messageID": messageID})
 
     def find_search_exists(self, serverID: int, memberID: int, messageID: int) -> bool:
         count = self.searches.count_documents({"serverID": serverID, "authorID": memberID, "messageID": messageID})

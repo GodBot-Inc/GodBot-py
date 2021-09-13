@@ -7,7 +7,7 @@ from discord_slash import SlashCommand
 from discord_slash.utils.manage_commands import create_option
 
 from CONSTANTS import TOKEN
-from src.discord.ButtonHandler import EventHandler
+from src.discord.InteractionsHandler import EventHandler
 from src.discord.DatabaseCommunication import Database
 
 # Windows: go into systemvariables and add variable named PYTHONPATH with path to src
@@ -216,26 +216,26 @@ async def invitelink(ctx, duration: int):
 #     You can enable and disable specific parts of the bot so you can basically configure it at your own will which is pretty sick.
 #     """
 #     if not ctx.author.guild_permissions.administrator:
-#         mbed = discord.Embed(
+#         mbed = discord_bot.Embed(
 #             title="Failed",
 #             description="You do not have administrator privileges",
-#             colour=discord.Colour.red()
+#             colour=discord_bot.Colour.red()
 #         )
 #         await ctx.send(embed=mbed)
 #         return
 #     try:
 #         client.load_extension(f"bot_parts.{part_name}")
-#         mbed = discord.Embed(
+#         mbed = discord_bot.Embed(
 #             title="Success",
 #             description=f"{part_name} was successfully activated",
-#             colour=discord.Colour.green()
+#             colour=discord_bot.Colour.green()
 #         )
 #         await ctx.send(embed=mbed)
 #     except:
-#         mbed = discord.Embed(
+#         mbed = discord_bot.Embed(
 #             title="Failed",
 #             description=f"{part_name} could not be activated. It might already be",
-#             colour=discord.Colour.red()
+#             colour=discord_bot.Colour.red()
 #         )
 #         await ctx.send(embed=mbed)
 #
@@ -255,11 +255,11 @@ async def invitelink(ctx, duration: int):
 #             continue
 #         try:
 #             prison_channel.delete()
-#         except discord.Forbidden:
+#         except discord_bot.Forbidden:
 #             error_list.append(f":x: I have not the permission to delete the channel {prison_channel.mention}")
-#         except discord.NotFound:
+#         except discord_bot.NotFound:
 #             error_list.append(f":x: I could not find the channel {prison_channel.mention} so I could not delete it")
-#         except discord.HTTPException:
+#         except discord_bot.HTTPException:
 #             error_list.append(f":x: I could not delete the channel {prison_channel.mention}")
 #     if error_list == []:
 #         return
@@ -306,27 +306,27 @@ async def invitelink(ctx, duration: int):
 #     For an explanation look at enable.
 #     """
 #     if not ctx.author.guild_permissions.administrator:
-#         mbed = discord.Embed(
+#         mbed = discord_bot.Embed(
 #             title="Failed",
 #             description="You do not have administrator privileges",
-#             colour=discord.Colour.red()
+#             colour=discord_bot.Colour.red()
 #         )
 #         await ctx.send(embed=mbed)
 #         return
 #     try:
 #         client.unload_extension(f"bot_parts.{part_name}")
 #     except:
-#         mbed = discord.Embed(
+#         mbed = discord_bot.Embed(
 #             title="Failed",
 #             description=f"{part_name} could not be deactivated. It might already be",
-#             colour=discord.Colour.red()
+#             colour=discord_bot.Colour.red()
 #         )
 #         await ctx.send(embed=mbed)
 #         return
-#     mbed = discord.Embed(
+#     mbed = discord_bot.Embed(
 #         title="Success",
 #         description=f"{part_name} was successfully deactivated",
-#         colour=discord.Colour.green()
+#         colour=discord_bot.Colour.green()
 #     )
 #     await ctx.send(embed=mbed)
 #     if part_name == "prison":
@@ -336,7 +336,7 @@ async def invitelink(ctx, duration: int):
 
 """Loads all cogs"""
 for file in os.listdir("bot_parts"):
-    if file.endswith(".py"):
+    if file.endswith(".py") and file != "__init__.py":
         client.load_extension(f"bot_parts.{file[:-3]}")
 
 if __name__ == "__main__":

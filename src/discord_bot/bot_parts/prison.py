@@ -70,7 +70,7 @@ class Prison(Cog):
         The permissions the arrested member has is determined by the prisoner role that is necessary for the function to work.
 
         Args:
-            ctx (SlashContext): Object passed to communicate with discord.
+            ctx (SlashContext): Object passed to communicate with discord_bot.
             member (discord.Member): The member that is going to be arrested.
             reason (str, optional): The reason that is going to be saved in the database. It shows up in the /checkprison message. Defaults to "None".
         """
@@ -157,7 +157,7 @@ class Prison(Cog):
         The released member gets back all his roles taken from him in arrest.
 
         Args:
-            ctx (SlashContext): Object passed to communicate with discord.
+            ctx (SlashContext): Object passed to communicate with discord_bot.
             member (discord.Member): The member that should be released.
         """
         if not ctx.author.guild_permissions.kick_members:
@@ -185,7 +185,7 @@ class Prison(Cog):
         except discord.Forbidden as e:
             await ctx.send(embed=await self._get_embed("error", "Prison channel could not be deleted because I don't have permission to"))
         except discord.HTTPException:
-            await ctx.send(embed=await self._get_embed("error", ":x: Could not delete the prison channel because discord didn't respond"))
+            await ctx.send(embed=await self._get_embed("error", ":x: Could not delete the prison channel because discord_bot didn't respond"))
 
         prisoner_role = get(ctx.guild.roles, name="Prisoner")
         await member.remove_roles(prisoner_role)

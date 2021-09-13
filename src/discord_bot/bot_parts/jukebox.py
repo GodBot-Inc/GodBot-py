@@ -1,25 +1,5 @@
-from __future__ import unicode_literals
-
-import asyncio
-
-import discord
-from typing import Tuple
-import aiohttp
-
-from data.custom_lavalink import lavalink
-from discord.ext.commands import Cog
-from discord_slash.cog_ext import cog_slash
-from discord_slash.model import ButtonStyle
-from discord_slash import SlashContext
-from discord_slash.utils.manage_commands import create_choice, create_option
-from discord_slash.utils.manage_components import (create_actionrow,
-                                                   create_button)
-from discord.errors import NotFound
-from src.discord.errors import VideoNotFound, PlaylistNotFound, VideoTypeNotFound, InvalidURL
-from src.discord.ButtonHandler import EventHandler
-from src.discord.DatabaseCommunication import Database
-from src.discord.youtube_api import Api
-from src.discord import jukebox_logic
+from . import *
+from src.Api import main
 
 COLOUR = 0xC2842F
 
@@ -55,9 +35,10 @@ class Jukebox(Cog):
         self.client = client
         self.db = Database()
         self.client.music = lavalink.Client(842387967510315009)
-        self.client.music.add_node("127.0.0.1", 2333, "youshallnotpass", "eu", "music-node")
+        self.client.music.add_node(LAVALINK_IP, LAVALINK_PORT, LAVALINK_PW, "eu", "music-node")
         self.client.add_listener(self.client.music.voice_update_handler, "on_socket_response")
         self.client.music.add_event_hook(self.track_hook)
+        main.start_server(client)
         print("Jukebox extension loaded")
 
     async def track_hook(self, event):
@@ -131,10 +112,10 @@ class Jukebox(Cog):
         ]
     )
     async def _search(self, ctx: SlashContext, search: str, results: int = 8, songfilter: str = "True"):
-        """A search function with that you can search for Youtube Videos withing discord
+        """A search function with that you can search for Youtube Videos withing discord_bot
 
         Args:
-            ctx (SlashContext): Object passed to communicate with discord
+            ctx (SlashContext): Object passed to communicate with discord_bot
             search (str): The search Key (Can be one or more words)
             results (int, optional): How many results should be shown. Defaults to 8.
             songfilter (str, optional): Whether to only show songs. Defaults to "True".
@@ -183,13 +164,13 @@ class Jukebox(Cog):
                          playlist: bool = False, ytMusic: bool = False) -> bool:
         """
 
-        This function plays a single video in discord.
+        This function plays a single video in discord_bot.
         It either plays it immediately or appends it to the queue. Whether something is played or not.
         This is a helper function because in a lot of functions songs are played.
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
         player: The player that plays the audio
         videoId: The YoutubeID of the video that's going to be played
         playlist: Whether to send a play message or not
@@ -270,7 +251,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to interact with discord
+        ctx: Object passed to interact with discord_bot
         player: The player that plays audio
         playlistId: The ID that youtube have that playlist as an identifier. Here used to get the videos from it. Defaults to None
         videoIds: If you want to play with this method and you don't have a playlistId put some videoIds in a tuple and pass it. Defaults to None
@@ -366,7 +347,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to interact with discord
+        ctx: Object passed to interact with discord_bot
         url: URL of a song. Not allowed: Livestreams
 
         """
@@ -573,7 +554,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
         search: The search Key that the bot searches for. Can be one or more words.
         queuelength: How many songs max. will be put into the queue. Defaults to 1
         songfilter: Whether to only search for songs. Defaults to "True"
@@ -658,7 +639,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
         if ctx.author.voice is None:
@@ -682,7 +663,8 @@ class Jukebox(Cog):
             return
 
         await player.set_pause(True)
-        await ctx.send(embed=discord.Embed(title=":pause_button: Paused Audio", description="", colour=discord.Colour.blue()))
+        await ctx.send(
+            embed=discord.Embed(title=":pause_button: Paused Audio", description="", colour=discord.Colour.blue()))
 
     @cog_slash(
         name="resume",
@@ -695,7 +677,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
         if ctx.author.voice is None:
@@ -733,7 +715,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
         if ctx.author.voice is None:
@@ -771,7 +753,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
         if ctx.author.voice is None:
@@ -801,10 +783,6 @@ class Jukebox(Cog):
 
         await player.skip()
         await ctx.send(embed=mbed)
-        if loop_state:
-            mbed = discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="",
-                                 colour=discord.Colour.blue())
-            await ctx.send(embed=mbed)
 
     @cog_slash(
         name="skipto",
@@ -825,7 +803,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
         index: The index that the method should skip into
 
         """
@@ -854,17 +832,13 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: This song does not exist in the queue"))
             return
 
-        print(index)
-        song: lavalink.models.AudioTrack = player.queue[index-1]
+        song: lavalink.models.AudioTrack = player.queue[index - 1]
         await player.skip(index - 1)
         await ctx.send(
-            embed=discord.Embed(title=f":next_track: **Skipped** to song number `[{song.title}]({song.uri})`", colour=discord.Colour.blue()))
-
-        loop_state: bool = player.repeat
-        if loop_state:
-            await ctx.send(
-                embed=discord.Embed(title=":arrow_right: Stopped loop, playing audio in order", description="",
-                                    colour=discord.Colour.blue()))
+            embed=discord.Embed(
+                title=f":next_track: **Skipped** to song number `[{song.title}]({song.uri})`"
+            )
+        )
 
     @cog_slash(
         name="loop",
@@ -895,7 +869,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
         mode: Whether to turn loop on or off
 
         """
@@ -956,7 +930,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
         level: The volume level the bot will be playing at. 1-10
 
         Returns
@@ -1007,7 +981,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
@@ -1035,35 +1009,177 @@ class Jukebox(Cog):
             await ctx.send(embed=mbed)
             return
 
-        #TODO: Use mbed.add_field instead of a fucking long String
-
-        big_dict: dict = {1: {
-            "title": "Queue",
-            "description": "",
-            "colour": COLOUR,
-            "fields": [
-                {
-                    "name": "`Now playing`",
-                    "value": f"__[{player.current.title}]({player.current.uri})__",
-                    "inline": False
-                }
-            ]
-        }}
-
-        for x in range(len(player.queue)):
-            if x % 10 == 0:
-                big_dict[int(x/10)+2] = {
+        if len(list(str(player.queue))) > 1:
+            pages = ceil(len(player.queue) / 10)
+            big_dict: dict = {1: {
+                "embed": {
                     "title": "Queue",
                     "description": "",
                     "colour": COLOUR,
-                    "fields": []
+                    "fields": [
+                        {
+                            "name": "`Now playing`",
+                            "value": f"__[{player.current.title}]({player.current.uri})__",
+                            "inline": False
+                        }
+                    ]
+                },
+                "components": [
+                    {
+                        "type": 1,
+                        "components": [
+                            {
+                                "type": 2,
+                                "label": "◀◀",
+                                "style": 1,
+                                "custom_id": "queue_skip_first",
+                                "disabled": True
+                            },
+                            {
+                                "type": 2,
+                                "label": "◀",
+                                "style": 1,
+                                "custom_id": "queue_skip_left",
+                                "disabled": True
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶",
+                                "style": 1,
+                                "custom_id": "queue_skip_right",
+                                "disabled": False
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶▶",
+                                "style": 1,
+                                "custom_id": "queue_skip_last",
+                                "disabled": False
+                            }
+                        ]
+                    }
+                ]
+            }}
+        else:
+            pages = 1
+            big_dict: dict = {1: {
+                "embed": {
+                    "title": "Queue",
+                    "description": "",
+                    "colour": COLOUR,
+                    "fields": [
+                        {
+                            "name": "`Now playing`",
+                            "value": f"__[{player.current.title}]({player.current.uri})__",
+                            "inline": False
+                        }
+                    ]
                 }
-            num = list(x[x:])
-            big_dict[num]["fields"].append({
-                "name": f"`{x+1}`",
+            }}
+            #TODO: do shit here
+
+        for x in range(len(player.queue)):
+            if x % 10 == 0:
+                if int(list(str(x))[0]) + 1 == pages and pages != 1:
+                    big_dict[int(x / 10) + 1] = {
+                        "embed": {
+                            "title": "Queue",
+                            "description": "",
+                            "colour": COLOUR,
+                            "fields": [],
+                        },
+                        "components": [
+                            {
+                                "type": 1,
+                                "components": [
+                                    {
+                                        "type": 2,
+                                        "label": "◀◀",
+                                        "style": 1,
+                                        "custom_id": "queue_skip_first",
+                                        "disabled": False
+                                    },
+                                    {
+                                        "type": 2,
+                                        "label": "◀",
+                                        "style": 1,
+                                        "custom_id": "queue_skip_left",
+                                        "disabled": False
+                                    },
+                                    {
+                                        "type": 2,
+                                        "label": "▶",
+                                        "style": 1,
+                                        "custom_id": "queue_skip_right",
+                                        "disabled": True
+                                    },
+                                    {
+                                        "type": 2,
+                                        "label": ":fast_forward:",
+                                        "style": 1,
+                                        "custom_id": "▶▶",
+                                        "disabled": True
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                else:
+                    big_dict[int(x / 10) + 1] = {
+                        "embed": {
+                            "title": "Queue",
+                            "description": "",
+                            "colour": COLOUR,
+                            "fields": []
+                        },
+                        "components": [
+                            {
+                                "type": 1,
+                                "components": [
+                                    {
+                                        "type": 2,
+                                        "label": "◀◀",
+                                        "style": 1,
+                                        "custom_id": "queue_skip_first",
+                                        "disabled": False
+                                    },
+                                    {
+                                        "type": 2,
+                                        "label": "◀",
+                                        "style": 1,
+                                        "custom_id": "queue_skip_left",
+                                        "disabled": False
+                                    },
+                                    {
+                                        "type": 2,
+                                        "label": "▶",
+                                        "style": 1,
+                                        "custom_id": "queue_skip_right",
+                                        "disabled": False
+                                    },
+                                    {
+                                        "type": 2,
+                                        "label": ":fast_forward:",
+                                        "style": 1,
+                                        "custom_id": "▶▶",
+                                        "disabled": False
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+            if len(list(str(x))) > 1:
+                num = int(list(str(x))[0]) + 1
+            else:
+                num = 1
+            big_dict[num]["embed"]["fields"].append({
+                "name": f"`{x + 1}`",
                 "value": f"__[{player.queue[x].title}]({player.queue[x].uri})__",
                 "inline": False
             })
+
+        pprint(big_dict)
+        messages.send(ctx.channel.id, embed=big_dict[1]["embed"], components=big_dict[1]["components"])
 
         # await ctx.send(embed=mbed)
 
@@ -1078,7 +1194,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
         if ctx.author.voice is None:
@@ -1162,7 +1278,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
         index: This argument determines the song that is going to be removed
 
         """
@@ -1221,7 +1337,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
 
@@ -1284,7 +1400,7 @@ class Jukebox(Cog):
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord
+        ctx: Object passed to communicate with discord_bot
 
         """
         if ctx.author.voice is None:
