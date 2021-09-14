@@ -8,31 +8,22 @@ from discord_slash.utils.manage_components import (create_actionrow,
 
 from src.discord_bot.DatabaseCommunication import Database
 from src.discord_bot.discord_api import messages
+from src import jukebox_logic
 
 db = Database()
 
 COLOUR = 0xC2842F
 
 
-class EventHandler:
-    @staticmethod
-    async def start_timer(ctx, msg: discord.Message, msg_id: int):
-        """Here we start a timer that expires after 120 seconds"""
-        start = time()
-        while time() - start < 300:
-            """While 120 have not passed"""
-            msg_json = messages.get(ctx.channel.id, msg_id)
-            if msg_json == {} or msg_json is None:
-                db.delete_search(msg_id)
-                return
-            component_id = msg_json["components"][0]["components"][1]["custom_id"]
-            if component_id == "closed_search_left":
-                return
-            await sleep(30)  # Cooldown so we don't request the discord_bot API too often
-        ar = await EventHandler.__get_actionrow("expired")
-        await msg.edit(components=[ar])
-        db.delete_search(msg_id)
+def define_logic():
+    global logic
+    logic = jukebox_logic.ClientLogic()
 
+
+define_logic()
+
+
+class EventHandler:
     @staticmethod
     async def handle(ctx):
         """This function is called if an Event (Button Press) should be handled"""
@@ -110,13 +101,11 @@ class EventHandler:
         if tag == "search" or tag is None:
             mbed = discord.Embed(
                 title="`{}`".format(song_dictionary[str(cursor)]["title"]),
-                description=":eye_in_speech_bubble: {}\n{}/{}".format(
-                    song_dictionary[str(cursor)]["views"],
-                    cursor,
-                    len(song_dictionary)
-                ),
+                description="",
                 colour=0xC2842F
             )
+            mbed.add_field(name=":eye:", value="{}".format(song_dictionary[str(cursor)]["views"]))
+            mbed.add_field(name="Page:", value="{}/{}".format(cursor, len(song_dictionary)))
             mbed.set_thumbnail(url=song_dictionary[str(cursor)]["thumbnail"])
             mbed.set_footer(icon_url=ctx.author.avatar_url, text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
             return mbed

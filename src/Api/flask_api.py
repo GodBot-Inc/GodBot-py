@@ -1,6 +1,6 @@
 from flask import *
 from flask_restful import Resource, abort, reqparse, Api
-from Endpoints import play_song
+from src.Api.Endpoints import play_song
 
 
 def load_endpoints(api):

@@ -16,7 +16,10 @@ def get(channel_id: int, message_id: int):
     response = requests.get(f"https://discord.com/api/v8/channels/{channel_id}/messages/{message_id}",
                             headers={"Authorization": f"Bot {TOKEN}"})
     status_code_check(response)
-    return response.json()
+    try:
+        return response.json()
+    except TypeError:
+        return response
 
 
 def send(channel_id: int, content: str = None, embed: dict = None, components: dict = None):
@@ -26,7 +29,10 @@ def send(channel_id: int, content: str = None, embed: dict = None, components: d
         json={"content": content, "embed": embed, "components": components}
     )
     status_code_check(response)
-    return response.json()
+    try:
+        return response.json()
+    except TypeError:
+        return response
 
 
 def edit(channel_id: int, message_id: int, content: dict = None, embed: dict = None, components: dict = None):
@@ -36,7 +42,10 @@ def edit(channel_id: int, message_id: int, content: dict = None, embed: dict = N
         json={"content": content, "embed": embed, "components": components}
     )
     status_code_check(response)
-    return response.json()
+    try:
+        return response.json()
+    except TypeError:
+        return response
 
 
 def delete(channel_id: int, message_id: int):
@@ -45,4 +54,7 @@ def delete(channel_id: int, message_id: int):
         headers={"Authorization": f"Bot {TOKEN}"},
     )
     status_code_check(response)
-    return response.json()
+    try:
+        return response.json()
+    except TypeError:
+        return response

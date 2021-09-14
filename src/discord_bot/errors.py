@@ -38,6 +38,11 @@ class InvalidURL(GodBotError):
     pass
 
 
+class PlayerChannelNotFound(GodBotError):
+    """Get's raised if the player could not fetch it's channel"""
+    pass
+
+
 class YTApiError(Exception):
     """Raised if something went wrong with the youtube API"""
     pass
@@ -50,4 +55,14 @@ class VideoNotFound(YTApiError):
 
 class PlaylistNotFound(YTApiError):
     """Raised when a requested playlist is not found"""
+    pass
+
+
+class ApiError(Exception):
+    """An error that the Api 'receivs'"""
+    pass
+
+
+class InvalidApiUrl(ApiError):
+    """Get's raised when a url passed from the api is not valid"""
     pass

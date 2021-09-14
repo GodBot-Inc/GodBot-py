@@ -38,8 +38,8 @@ class Jukebox(Cog):
         self.client.music.add_node(LAVALINK_IP, LAVALINK_PORT, LAVALINK_PW, "eu", "music-node")
         self.client.add_listener(self.client.music.voice_update_handler, "on_socket_response")
         self.client.music.add_event_hook(self.track_hook)
-        self.logic = jukebox_logic.ClientLogic(client)
-        flask_api.start_server()
+        # self.logic = jukebox_logic.ClientLogic(client)
+        # flask_api.start_server()
         print("Jukebox extension loaded")
 
     async def track_hook(self, event):
@@ -78,40 +78,7 @@ class Jukebox(Cog):
                     await asyncio.sleep(0.5)
                     await player.set_pause(False)
 
-    @cog_slash(
-        name="search",
-        description="Searches the web for songs that fit your search-key",
-        options=[
-            create_option(
-                name="search",
-                description="Here you give a search Term I will search for",
-                option_type=3,
-                required=True
-            ),
-            create_option(
-                name="results",
-                description="How many videos should be shown (mx. 12 min. 2)? Default is 8",
-                option_type=4,
-                required=False
-            ),
-            create_option(
-                name="songfilter",
-                description="Whether only songs should be searched",
-                option_type=3,
-                required=False,
-                choices=[
-                    create_choice(
-                        name="Only Songs",
-                        value="True"
-                    ),
-                    create_choice(
-                        name="Everything",
-                        value="False"
-                    )
-                ]
-            )
-        ]
-    )
+    @cog_slash(name="search")
     async def _search(self, ctx: SlashContext, search: str, results: int = 8, songfilter: str = "True"):
         """A search function with that you can search for Youtube Videos withing discord_bot
 
@@ -329,18 +296,7 @@ class Jukebox(Cog):
             await ctx.send(embed=mbed)
         yt.close()
 
-    @cog_slash(
-        name="play",
-        description="Plays the song given with the url",
-        options=[
-            create_option(
-                name="url",
-                description="Url of a song (Playlists are not supported yet)",
-                option_type=3,
-                required=True
-            )
-        ]
-    )
+    @cog_slash(name="play")
     async def _play(self, ctx: SlashContext, url: str):
         """
 
