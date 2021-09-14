@@ -26,13 +26,44 @@ class Singleton(object):
         it.__init__(*args, **kwds)
         return it
 
-    def __init__(self, *args, **kwds):
-        if args != () and isinstance(args[0], discord.client):
-            self.client = args[0]
+    def __init__(self, client=None, *args, **kwds):
+        if client is not None:
+            self.client = client
 
 
 async def start_timer(channel_id: int, msg_id: int):
-    """Here we start a timer that expires after 120 seconds"""
+    def get_ar(type: str):
+        if type == "search":
+            return [
+                {
+                    "type": 1,
+                    "components": [
+                        {
+                            "type": 2,
+                            "label": "Url",
+                            "style": 5,
+                            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                            "disabled": True
+                        },
+                        {
+                            "type": 2,
+                            "label": "◀",
+                            "style": 2,
+                            "custom_id": "closed_search_left",
+                            "disabled": True
+                        },
+                        {
+                            "type": 2,
+                            "label": "▶",
+                            "style": 2,
+                            "custom_id": "closed_search_right",
+                            "disabled": True
+                        }
+                    ]
+                }
+            ]
+
+    """Here we start a timer that expires after 300 seconds"""
     #TODO: Differentiate between different things (queue, search)
     start = time()
     while time() - start < 300:
@@ -46,12 +77,11 @@ async def start_timer(channel_id: int, msg_id: int):
         if component_id == "closed_search_left":
             db.delete_search(msg_id)
             return
-        elif component_id == "expired_queue_first":
+        elif component_id == "closed_queue_left":
             db.delete_queue(msg_id)
             return
         await sleep(30)  # Cooldown so we don't request the discord_bot API too often
-    # ar = await EventHandler.__get_actionrow("expired")
-    # await msg.edit(components=[ar])
+    messages.edit(channel_id, msg_id, components=get_ar("search"))
     db.delete_search(msg_id)
 
 
@@ -186,16 +216,8 @@ class ClientLogic(Singleton):
                 return
             raise PlayerChannelNotFound
         if player_channel != channel:
-            messages
+            pass
         #TODO: Rewrite src.jukebox.py play so it fit's the bot and the api
-
-
-
-
-
-
-
-
 
 
 async def search(search: str, results: int = 8, songfilter: str = "True"):
@@ -220,8 +242,3 @@ async def search(search: str, results: int = 8, songfilter: str = "True"):
                                        "views": yt.views[x]}
     yt.close()
     return song_dictionary
-
-
-def setup(client_par):
-    global client
-    client = client_par

@@ -30,7 +30,7 @@ msg_embed_example = {
     }
 }
 
-from src.discord.discord_api import messages
+from src.discord_bot.discord_api import messages
 
 print(messages.send(867677864407859240,
                     content="I'm content",

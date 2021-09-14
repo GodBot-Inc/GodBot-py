@@ -38,9 +38,9 @@ class Jukebox(Cog):
         self.client.music.add_node(LAVALINK_IP, LAVALINK_PORT, LAVALINK_PW, "eu", "music-node")
         self.client.add_listener(self.client.music.voice_update_handler, "on_socket_response")
         self.client.music.add_event_hook(self.track_hook)
-        # self.logic = jukebox_logic.ClientLogic(client)
-        # flask_api.start_server()
+        self.logic = jukebox_logic.ClientLogic(client)
         print("Jukebox extension loaded")
+        # flask_api.start_server()
 
     async def track_hook(self, event):
         if isinstance(event, lavalink.events.QueueEndEvent):
@@ -126,7 +126,7 @@ class Jukebox(Cog):
                         text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
         msg: discord.Message = await ctx.send(embed=mbed, components=[ar])
         self.db.create_search(ctx.guild.id, ctx.author.id, msg.id, song_dictionary)
-        await EventHandler.start_timer(ctx, msg, msg.id)
+        await jukebox_logic.start_timer(ctx.channel.id, msg.id)
 
     async def play_video(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, videoId: str,
                          playlist: bool = False, ytMusic: bool = False) -> bool:

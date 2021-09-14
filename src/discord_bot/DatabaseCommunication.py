@@ -37,22 +37,6 @@ class Database(Singleton):
             "join_date": time.strftime("%Y-%m-%d %H:%M:%S")
         })
 
-    def create_prison(self, serverID: int, memberID: int, member_name: str, member_discriminator: int, prisonID: int, roles: list, reason: str):
-        """Creates a prison entry in the MongoDB Database (duplicates are impossible)"""
-        count = self.prisons.count_documents({"serverID": serverID, "memberID": memberID})
-        if count > 0:
-            raise DuplicateEntry
-        self.prisons.insert_one({
-            "serverID": serverID,
-            "memberID": memberID,
-            "member_name": member_name,
-            "member_discriminator": member_discriminator,
-            "prisonID": prisonID,
-            "roles": roles,
-            "reason": reason,
-            "creation_date": time.strftime("%d.%m.%Y %H:%M:%S")
-        })
-
     def create_search(self, serverID: int, authorID: int, messageID: int, song_dictionary: dict):
         self.searches.insert_one({
             "serverID": serverID,
@@ -80,9 +64,6 @@ class Database(Singleton):
 
     def delete_server(self, serverID: int):
         self.servers.delete_one({"serverID": serverID})
-
-    def delete_prison(self, serverID: int, memberID: int):
-        self.prisons.delete_one({"serverID": serverID, "memberID": memberID})
 
     def delete_search(self, messageID: int):
         self.searches.delete_one({"messageID": messageID})
@@ -159,7 +140,7 @@ class Database(Singleton):
     def clear_server(self, serverID: int):
         self.servers.delete_one({"serverID": serverID})
         self.searches.delete_many({"serverID": serverID})
-        self.prisons.delete_many({"serverID": serverID})
+        self.queues.delete_many({"serverID": serverID})
 
     def clear_prisons(self, serverID: int):
         self.prisons.delete_many({"serverID": serverID})

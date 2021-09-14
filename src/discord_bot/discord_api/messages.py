@@ -8,8 +8,6 @@ def status_code_check(response):
         raise NotFound(response.json())
     elif response.status_code in [500, 501, 502, 503]:
         raise ConnectionError(response.json())
-    else:
-        print("Else status_code" + str(response.status_code))
 
 
 def get(channel_id: int, message_id: int):
@@ -36,10 +34,47 @@ def send(channel_id: int, content: str = None, embed: dict = None, components: d
 
 
 def edit(channel_id: int, message_id: int, content: dict = None, embed: dict = None, components: dict = None):
+    json_dict: dict = {}
+    if content is None and embed is None and components is None:
+        return
+    elif content is None and embed is None and components is not None:
+        json_dict = {
+            "content": "",
+            "components": components
+        }
+    elif content is not None and embed is None and components is not None:
+        json_dict = {
+            "embed"
+        }
+    elif content is None and embed is not None and components is not None:
+        json_dict = {
+            "embed": embed,
+            "components": components
+        }
+    elif content is not None and embed is None and components is None:
+        json_dict = {
+            "content": content
+        }
+    elif content is None and embed is not None and components is None:
+        json_dict = {
+            "embed": embed
+        }
+    elif content is not None and embed is not None and components is None:
+        json_dict = {
+            "content": content,
+            "embed": embed
+        }
+    elif content is not None and embed is not None and components is not None:
+        json_dict = {
+            "content": content,
+            "embed": embed,
+            "components": components
+        }
+
     response = requests.patch(
         f"https://discord.com/api/v8/channels/{channel_id}/messages/{message_id}",
         headers={"Authorization": f"Bot {TOKEN}"},
-        json={"content": content, "embed": embed, "components": components}
+        json=json_dict
     )
     status_code_check(response)
     try:
