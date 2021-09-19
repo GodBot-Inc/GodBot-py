@@ -51,3 +51,7 @@
 #                          }
 #                      ])
 #        )
+from src.discord_bot.DatabaseCommunication import Database
+
+db = Database()
+db.update_queue_page(msgID=889196609198522408, page=5)

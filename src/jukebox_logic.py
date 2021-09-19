@@ -9,6 +9,7 @@ from data.custom_lavalink import lavalink
 from time import time
 from asyncio import sleep
 from src.discord_bot.DatabaseCommunication import Database
+from discord_slash.utils.manage_components import create_button, create_actionrow
 
 COLOUR = 12747823
 Red = 15158332
@@ -32,7 +33,7 @@ class Singleton(object):
             self.client = client
 
 
-async def start_timer(channel_id: int, msg_id: int, type: int) -> None:
+async def start_timer(msg, type: int) -> None:
     """
 
     A function that is called when a message with buttons is created.
@@ -40,8 +41,7 @@ async def start_timer(channel_id: int, msg_id: int, type: int) -> None:
 
     Parameters
     ----------
-    channel_id
-    msg_id
+    msg: The message object gained from the async ctx.send method
     type: 1 -> search; 2 -> queue
 
     Returns
@@ -126,24 +126,76 @@ async def start_timer(channel_id: int, msg_id: int, type: int) -> None:
     start = time()
     while time() - start < 300:
         """While 120 have not passed"""
-        msg_json = messages.get(channel_id, msg_id)
+        msg_json = messages.get(msg.channel.id, msg.id)
         if msg_json == {} or msg_json is None:
-            db.delete_search(msg_id)
+            db.delete_search(msg.id)
             return
 
         component_id = msg_json["components"][0]["components"][1]["custom_id"]
         if component_id == "closed_search_left":
-            db.delete_search(msg_id)
+            db.delete_search(msg.id)
             return
         elif component_id == "closed_queue_left":
-            db.delete_queue(msg_id)
+            db.delete_queue(msg.id)
             return
         await sleep(30)  # Cooldown so we don't request the discord_bot API too often
-    messages.edit(channel_id, msg_id, components=get_ar(type))
     if type == 1:
-        db.delete_search(msg_id)
+        await msg.edit(
+            components=[create_actionrow(
+                create_button(
+                    style=5,
+                    url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="◀",
+                    custom_id="closed_search_left",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="▶",
+                    custom_id="closed_search_right",
+                    disabled=True
+                )
+            )]
+        )
+        db.delete_search(msg.id)
     elif type == 2:
-        db.delete_queue(msg_id)
+        await msg.edit(
+            components=[create_actionrow(
+                create_button(
+                    style=2,
+                    label="◀◀",
+                    custom_id="a",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="◀",
+                    custom_id="closed_queue_left",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="▶",
+                    custom_id="queue_right",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="▶▶",
+                    custom_id="queue_last",
+                    disabled=True
+                )
+            )]
+        )
+        db.delete_queue(msg.id)
+    if type == 1:
+        db.delete_search(msg.id)
+    elif type == 2:
+        db.delete_queue(msg.id)
 
 
 class ClientLogic(Singleton):

@@ -131,7 +131,7 @@ class Api:
         self.reset_vars()
         request = self.yt.playlistItems().list(
             part="snippet",
-            maxResults=25,
+            maxResults=100,
             playlistId=Id,
             fields="items/snippet/resourceId(videoId),items/snippet(thumbnails(high),title)"
         )

@@ -126,7 +126,7 @@ class Jukebox(Cog):
                         text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
         msg: discord.Message = await ctx.send(embed=mbed, components=[ar])
         self.db.create_search(ctx.guild.id, ctx.author.id, msg.id, song_dictionary)
-        await jukebox_logic.start_timer(ctx.channel.id, msg.id, 1)
+        await jukebox_logic.start_timer(msg, 1)
 
     async def play_video(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, videoId: str,
                          playlist: bool = False, ytMusic: bool = False) -> bool:
@@ -874,128 +874,32 @@ class Jukebox(Cog):
 
     @cog_slash(name="queue")
     async def _queue(self, ctx):
-        def get_queue_components(component_type: int) -> list:
-            """
-
-            Help method to quickly get components for a queue object.
-
-            Parameters
-            ----------
-            component_type: 1 -> left disabled; 2 -> right disabled; 3 -> nothing disabled
-
-            Returns
-            -------
-            list: list of action rows that fit the queue schema
-
-            """
+        def get_actionrow(component_type: int) -> list:
             if component_type == 1:
-                create_actionrow(
+                return [create_actionrow(
                     create_button(
                         style=2,
                         label="◀◀",
                         custom_id="queue_first",
                         disabled=True
+                    ),
+                    create_button(
+                        style=2,
+                        label="◀",
+                        custom_id="queue_left",
+                        disabled=True
+                    ),
+                    create_button(
+                        style=2,
+                        label="▶",
+                        custom_id="queue_right"
+                    ),
+                    create_button(
+                        style=2,
+                        label="▶▶",
+                        custom_id="queue_last"
                     )
-                )
-                return [
-                    {
-                        "type": 1,
-                        "components": [
-                            {
-                                "type": 2,
-                                "label": "◀◀",
-                                "style": 2,
-                                "custom_id": "queue_first",
-                                "disabled": True
-                            },
-                            {
-                                "type": 2,
-                                "label": "◀",
-                                "style": 2,
-                                "custom_id": "queue_left",
-                                "disabled": True
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶",
-                                "style": 2,
-                                "custom_id": "queue_right"
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶▶",
-                                "style": 2,
-                                "custom_id": "queue_last"
-                            }
-                        ]
-                    }
-                ]
-            elif component_type == 2:
-                return [
-                    {
-                        "type": 1,
-                        "components": [
-                            {
-                                "type": 2,
-                                "label": "◀◀",
-                                "style": 2,
-                                "custom_id": "queue_first"
-                            },
-                            {
-                                "type": 2,
-                                "label": "◀",
-                                "style": 2,
-                                "custom_id": "queue_left"
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶",
-                                "style": 2,
-                                "custom_id": "queue_right",
-                                "disabled": True
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶▶",
-                                "style": 2,
-                                "custom_id": "queue_last",
-                                "disabled": True
-                            }
-                        ]
-                    }
-                ]
-            elif component_type == 3:
-                return [
-                    {
-                        "type": 1,
-                        "components": [
-                            {
-                                "type": 2,
-                                "label": "◀◀",
-                                "style": 2,
-                                "custom_id": "queue_first"
-                            },
-                            {
-                                "type": 2,
-                                "label": "◀",
-                                "style": 2,
-                                "custom_id": "queue_left"
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶",
-                                "style": 2,
-                                "custom_id": "queue_right"
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶▶",
-                                "style": 2,
-                                "custom_id": "queue_last"
-                            }
-                        ]
-                    }
-                ]
+                )]
 
         """
 
@@ -1015,41 +919,19 @@ class Jukebox(Cog):
             return
 
         if not player.queue:
-            # TODO: Program jukebox_logic and invoke current
-            messages.send(ctx.channel.id, embed={
-                "title": ":x: Only one song is playing",
-                "description": "",
-                "colour": Red
-            })
+            await ctx.send(
+                embed=discord.Embed(
+                    title="Queue",
+                    description="**Now playing** __[{}]({})__ | :mag_right: <@{}>".format(player.current.title, player.current.uri, player.current.requester),
+                    colour=COLOUR
+                )
+            )
             return
 
         pages = ceil(len(player.queue) / 10)
-        embed = discord.Embed(
-            title="Queue",
-            description="",
-            colour=COLOUR
-        )
-        if pages == 1:
-            big_dict: dict = {"1": {
-                "embed": {
-                    "title": "Queue",
-                    "description": f"__[{player.current.title}]({player.current.uri})__ | :mag_right: <@{player.current.requester}>",
-                    "colour": COLOUR
-                },
-                "components": []
-            }}
-        else:
-            big_dict: dict = {"1": {
-                "embed": {
-                    "title": "Queue",
-                    "description": f"__[{player.current.title}]({player.current.uri})__ | :mag_right: <@{player.current.requester}>",
-                    "colour": COLOUR,
-                    "footer": {
-                        "text": f"Page 1/{pages}"
-                    }
-                },
-                "components": get_queue_components(1)
-            }}
+        descriptions: dict = {
+            "1": "**Now playing** __[{}]({})__ | :mag_right: <@{}>".format(player.current.title, player.current.uri, player.current.requester)
+        }
 
         for x in range(len(player.queue)):
             # TODO: Make Q compatible with more than 100 songs
@@ -1058,40 +940,56 @@ class Jukebox(Cog):
             else:
                 current_page: int = 1
             if x % 10 == 0 and x != 0:
-                if current_page == pages:
-                    big_dict[str(current_page)] = {
-                        "embed": {
-                            "title": "Queue",
-                            "description": "",
-                            "colour": COLOUR,
-                            "footer": {
-                                "text": f"Page {current_page}/{pages}"
-                            }
-                        },
-                        "components": get_queue_components(2)
-                    }
-                    continue
-                else:
-                    big_dict[str(current_page)] = {
-                        "embed": {
-                            "title": "Queue",
-                            "description": "",
-                            "colour": COLOUR,
-                            "footer": {
-                                "text": f"Page {current_page}/{pages}"
-                            }
-                        },
-                        "components": get_queue_components(3)
-                    }
-                    continue
-            big_dict[str(current_page)]["embed"]["description"] += f"\n\n**{x + 1}** [{player.queue[x].title}]({player.queue[x].uri}) | :mag_right: <@{player.current.requester}>"
+                descriptions[str(current_page)] = "**{}** [{}]({}) | :mag_right: <@{}>".format(x+1, player.queue[x].title, player.queue[x].uri, player.queue[x].requester)
+                continue
+            descriptions[str(current_page)] += "\n\n**{}** [{}]({}) | :mag_right: <@{}>".format(x+1, player.queue[x].title, player.queue[x].uri, player.queue[x].requester)
 
-        msg = await ctx.send("Wait a second")
-        await msg.delete()
-        msg_id = messages.send(ctx.channel.id, embed=big_dict["1"]["embed"], components=big_dict["1"]["components"])["id"]
         if pages != 1:
-            self.db.create_queue(ctx.guild.id, int(msg_id), big_dict, 1, pages)
-            await jukebox_logic.start_timer(ctx.channel.id, msg_id, 2)
+            embed = discord.Embed(
+                title="Queue",
+                description=descriptions.get("1"),
+                colour=COLOUR
+            )
+            embed.set_footer(text="Page 1/{}".format(pages))
+
+            msg = await ctx.send(
+                embed=embed,
+                components=[create_actionrow(
+                    create_button(
+                        style=2,
+                        label="◀◀",
+                        custom_id="queue_first",
+                        disabled=True
+                    ),
+                    create_button(
+                        style=2,
+                        label="◀",
+                        custom_id="queue_left",
+                        disabled=True
+                    ),
+                    create_button(
+                        style=2,
+                        label="▶",
+                        custom_id="queue_right"
+                    ),
+                    create_button(
+                        style=2,
+                        label="▶▶",
+                        custom_id="queue_last"
+                    )
+                )]
+            )
+
+            self.db.create_queue(ctx.guild.id, msg.id, descriptions, 1, pages)
+            await jukebox_logic.start_timer(msg, 2)
+        else:
+            await ctx.send(
+                embed=discord.Embed(
+                    title="Queue",
+                    description=descriptions.get("1"),
+                    colour=COLOUR
+                )
+            )
 
     @cog_slash(name="current")
     async def _current(self, ctx: SlashContext):

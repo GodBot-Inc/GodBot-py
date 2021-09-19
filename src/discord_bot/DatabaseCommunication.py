@@ -1,5 +1,4 @@
 import pymongo
-from typing import Dict
 
 from src.discord_bot.errors import *
 import time
@@ -45,11 +44,11 @@ class Database(Singleton):
             "cursor": 1
         })
 
-    def create_queue(self, serverID: int, messageID: int, queue_dict: dict, current_page: int, max_pages: int):
+    def create_queue(self, serverID: int, messageID: int, descriptions: dict, current_page: int, max_pages: int):
         self.queues.insert_one({
             "serverID": serverID,
             "messageID": messageID,
-            "queue_pages": queue_dict,
+            "descriptions": descriptions,
             "current_page": current_page,
             "max_pages": max_pages
         })
@@ -64,13 +63,13 @@ class Database(Singleton):
         self.searches.update_one({"serverID": serverID, "authorID": authorID, "messageID": msgID}, {"$inc": {"cursor": -1}})
 
     def update_queue_page(self, msgID: int, page: int):
-        self.searches.update_one({"messageID": msgID}, {"$set": {"current_page": page}})
+        self.queues.update_one({"messageID": msgID}, {"$set": {"current_page": page}})
 
     def increase_queue_page(self, msgID: int):
-        self.searches.update_one({"messageID": msgID}, {"$inc": {"current_page": 1}})
+        self.queues.update_one({"messageID": msgID}, {"$inc": {"current_page": 1}})
 
     def decrease_queue_page(self, msgID: int):
-        self.searches.update_one({"messageID": msgID}, {"$inc": {"current_page": -1}})
+        self.queues.update_one({"messageID": msgID}, {"$inc": {"current_page": -1}})
 
     def delete_server(self, serverID: int):
         self.servers.delete_one({"serverID": serverID})
@@ -99,29 +98,6 @@ class Database(Singleton):
         if count == 0:
             raise NoEntriesFound
         return self.queues.find_one({"messageID": msgID})
-
-    def find_queue_page(self, msgID: int) -> int:
-        count = self.queues.count_documents({"messageID": msgID})
-        if count == 0:
-            raise NoEntriesFound
-        return self.queues.find_one({"messageID": msgID})["current_page"]
-
-    def find_queue_page_message(self, messageID: int, page: int) -> Dict[dict, int]:
-        count = self.searches.count_documents({"messageID": messageID})
-        if count == 0:
-            raise NoEntriesFound
-        queue = self.queues.find_one({"messageID": messageID})
-        return {
-            "page": queue["queue_pages"][page],
-            "max_pages": queue["max_pages"]
-        }
-
-    def find_max_queue_page(self, msgID: int) -> int:
-        count = self.searches.count_documents({"messageID": msgID})
-        if count == 0:
-            raise NoEntriesFound
-        queue = self.queues.find_one({"messageID": msgID})
-        return queue["pages"]
 
     def clear_server(self, serverID: int):
         self.servers.delete_one({"serverID": serverID})

@@ -24,13 +24,13 @@ class EventHandler:
     @staticmethod
     async def handle(ctx):
         """This function is called if an Event (Button Press) should be handled"""
-        #Search
+        # Search
         if ctx.custom_id == "search_right":
             await EventHandler._on_right(ctx)
         elif ctx.custom_id == "search_left":
             await EventHandler._on_left(ctx)
 
-        #Queue
+        # Queue
         elif ctx.custom_id == "queue_first":
             await EventHandler._on_queue_first(ctx)
         elif ctx.custom_id == "queue_left":
@@ -42,6 +42,7 @@ class EventHandler:
 
     @staticmethod
     async def __get_actionrow(tag: str, url: str = None):
+        # Search
         if tag == "normal":
             buttons = [
                 create_button(
@@ -61,6 +62,7 @@ class EventHandler:
                 )
             ]
             return create_actionrow(*buttons)
+
         elif tag == "expired":
             buttons = [
                 create_button(
@@ -81,6 +83,7 @@ class EventHandler:
                 )
             ]
             return create_actionrow(*buttons)
+
         elif tag == "disable":
             buttons = [
                 create_button(
@@ -102,6 +105,83 @@ class EventHandler:
                 )
             ]
             return create_actionrow(*buttons)
+
+        # Queue
+        elif tag == "queue_no_left":
+            return [create_actionrow(
+                create_button(
+                    style=2,
+                    label="◀◀",
+                    custom_id="queue_first",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="◀",
+                    custom_id="queue_left",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="▶",
+                    custom_id="queue_right"
+                ),
+                create_button(
+                    style=2,
+                    label="▶▶",
+                    custom_id="queue_last"
+                )
+            )]
+
+        elif tag == "queue":
+            return [create_actionrow(
+                create_button(
+                    style=2,
+                    label="◀◀",
+                    custom_id="queue_first"
+                ),
+                create_button(
+                    style=2,
+                    label="◀",
+                    custom_id="queue_left"
+                ),
+                create_button(
+                    style=2,
+                    label="▶",
+                    custom_id="queue_right"
+                ),
+                create_button(
+                    style=2,
+                    label="▶▶",
+                    custom_id="queue_last"
+                )
+            )]
+
+        elif tag == "queue_no_right":
+            return [create_actionrow(
+                create_button(
+                    style=2,
+                    label="◀◀",
+                    custom_id="queue_first"
+                ),
+                create_button(
+                    style=2,
+                    label="◀",
+                    custom_id="queue_left"
+                ),
+                create_button(
+                    style=2,
+                    label="▶",
+                    custom_id="queue_right",
+                    disabled=True
+                ),
+                create_button(
+                    style=2,
+                    label="▶▶",
+                    custom_id="queue_last",
+                    disabled=True
+                )
+            )]
 
     @staticmethod
     async def __get_embed(ctx, song_dictionary: dict, cursor: int, tag: str = None):
@@ -170,12 +250,17 @@ class EventHandler:
 
         """
         queue: dict = db.find_queue(ctx.origin_message_id)
-        messages.edit(
-            ctx.channel_id,
-            ctx.origin_message_id,
-            embed=queue["queue_pages"]["1"]["embed"],
-            components=queue["queue_pages"]["1"]["components"]
+        embed = discord.Embed(
+            title="Queue",
+            description=queue.get("descriptions").get("1"),
+            colour=COLOUR
         )
+        embed.set_footer(text="Page 1/{}".format(queue.get("max_pages")))
+        await ctx.edit_origin(
+            embed=embed,
+            components=await EventHandler.__get_actionrow("queue_no_left")
+        )
+
         db.update_queue_page(ctx.origin_message_id, 1)
 
     @staticmethod
@@ -193,13 +278,25 @@ class EventHandler:
 
         """
         queue: dict = db.find_queue(ctx.origin_message_id)
-        messages.edit(
-            ctx.channel_id,
-            ctx.origin_message_id,
-            embed=queue["queue_pages"][str(queue["current_page"]-1)]["embed"],
-            components=queue["queue_pages"][str(queue["current_page"]-1)]["components"]
+
+        embed = discord.Embed(
+            title="Queue",
+            description=queue.get("descriptions").get(str(queue.get("current_page") - 1)),
+            colour=COLOUR
         )
-        db.decrease_queue_page(ctx.origin_message_id)
+        embed.set_footer(text="Page {}/{}".format(queue.get("current_page") - 1, queue.get("max_pages")))
+
+        if queue.get("current_page") - 1 == 1:
+            components = await EventHandler.__get_actionrow("queue_no_left")
+        else:
+            components = await EventHandler.__get_actionrow("queue")
+
+        await ctx.edit_origin(
+            embed=embed,
+            components=components
+        )
+
+        db.update_queue_page(ctx.origin_message_id, queue.get("current_page") - 1)
 
     @staticmethod
     async def _on_queue_right(ctx):
@@ -215,15 +312,26 @@ class EventHandler:
         -------
 
         """
-        print(ctx.origin_message_id)
         queue: dict = db.find_queue(ctx.origin_message_id)
-        messages.edit(
-            ctx.channel_id,
-            ctx.origin_message_id,
-            embed=queue["queue_pages"][str(queue["current_page"]+1)]["embed"],
-            components=queue["queue_pages"][str(queue["current_page"]+1)]["components"]
+
+        embed = discord.Embed(
+            title="Queue",
+            description=queue.get("descriptions").get(str(queue.get("current_page") + 1)),
+            colour=COLOUR
         )
-        db.increase_queue_page(ctx.origin_message_id)
+        embed.set_footer(text="Page {}/{}".format(queue.get("current_page") + 1, queue.get("max_pages")))
+
+        if queue.get("current_page") + 1 == queue.get("max_pages"):
+            components = await EventHandler.__get_actionrow("queue_no_right")
+        else:
+            components = await EventHandler.__get_actionrow("queue")
+
+        await ctx.edit_origin(
+            embed=embed,
+            components=components
+        )
+
+        db.update_queue_page(ctx.origin_message_id, queue.get("current_page") + 1)
 
     @staticmethod
     async def _on_queue_last(ctx):
@@ -240,10 +348,17 @@ class EventHandler:
 
         """
         queue: dict = db.find_queue(ctx.origin_message_id)
-        messages.edit(
-            ctx.channel_id,
-            ctx.origin_message_id,
-            embed=queue["queue_pages"][str(queue["pages"])]["embed"],
-            components=queue["queue_pages"][str(queue["pages"])]["components"]
+
+        embed = discord.Embed(
+            title="Queue",
+            description=queue.get("descriptions").get(str(queue.get("max_pages"))),
+            colour=COLOUR
         )
-        db.update_queue_page(ctx.origin_message_id, queue["pages"])
+        embed.set_footer(text="Page {}/{}".format(queue.get("max_pages"), queue.get("max_pages")))
+
+        await ctx.edit_origin(
+            embed=embed,
+            components=await EventHandler.__get_actionrow("queue_no_right")
+        )
+
+        db.update_queue_page(ctx.origin_message_id, queue.get("max_pages"))
