@@ -34,7 +34,7 @@ class Jukebox(Cog):
     def __init__(self, client):
         self.client = client
         self.db = Database()
-        self.client.music = lavalink.Client(842387967510315009)
+        self.client.music = lavalink.Client(APPLICATION_ID)
         self.client.music.add_node(LAVALINK_IP, LAVALINK_PORT, LAVALINK_PW, "eu", "music-node")
         self.client.add_listener(self.client.music.voice_update_handler, "on_socket_response")
         self.client.music.add_event_hook(self.track_hook)
@@ -126,7 +126,7 @@ class Jukebox(Cog):
                         text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
         msg: discord.Message = await ctx.send(embed=mbed, components=[ar])
         self.db.create_search(ctx.guild.id, ctx.author.id, msg.id, song_dictionary)
-        await jukebox_logic.start_timer(ctx.channel.id, msg.id)
+        await jukebox_logic.start_timer(ctx.channel.id, msg.id, 1)
 
     async def play_video(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, videoId: str,
                          playlist: bool = False, ytMusic: bool = False) -> bool:
@@ -585,10 +585,7 @@ class Jukebox(Cog):
         await ctx.send(embed=mbed)
         yt.close()
 
-    @cog_slash(
-        name="pause",
-        description="Pauses the audio currently playing"
-    )
+    @cog_slash(name="pause")
     async def _pause(self, ctx):
         """
 
@@ -623,10 +620,7 @@ class Jukebox(Cog):
         await ctx.send(
             embed=discord.Embed(title=":pause_button: Paused Audio", description="", colour=discord.Colour.blue()))
 
-    @cog_slash(
-        name="resume",
-        description="Resumes paused audio"
-    )
+    @cog_slash(name="resume")
     async def _resume(self, ctx):
         """
 
@@ -661,10 +655,7 @@ class Jukebox(Cog):
         mbed = discord.Embed(title=":play_pause: Resumed Audio", description="", colour=discord.Colour.blue())
         await ctx.send(embed=mbed)
 
-    @cog_slash(
-        name="stop",
-        description="Stops the audio currently playing or being paused"
-    )
+    @cog_slash(name="stop")
     async def _stop(self, ctx):
         """
 
@@ -699,10 +690,7 @@ class Jukebox(Cog):
         mbed = discord.Embed(title=":stop_button: Stopped Audio", description="", colour=discord.Colour.blue())
         await ctx.send(embed=mbed)
 
-    @cog_slash(
-        name="skip",
-        description="Skips the current song in the queue"
-    )
+    @cog_slash(name="skip")
     async def _skip(self, ctx: SlashContext):
         """
 
@@ -741,18 +729,7 @@ class Jukebox(Cog):
         await player.skip()
         await ctx.send(embed=mbed)
 
-    @cog_slash(
-        name="skipto",
-        description="Skips to a specific song in the queue",
-        options=[
-            create_option(
-                name="index",
-                description="The index of a song that you want to skip to",
-                option_type=4,
-                required=True
-            )
-        ]
-    )
+    @cog_slash(name="skipto")
     async def _skipto(self, ctx: SlashContext, index: int):
         """
 
@@ -797,28 +774,7 @@ class Jukebox(Cog):
             )
         )
 
-    @cog_slash(
-        name="loop",
-        description="Turns the loop function on or off",
-        options=[
-            create_option(
-                name="mode",
-                description="Specify if the loop should be on or off",
-                required=True,
-                option_type=5,
-                choices=[
-                    create_choice(
-                        name="On",
-                        value="True"
-                    ),
-                    create_choice(
-                        name="Off",
-                        value="False"
-                    )
-                ]
-            )
-        ]
-    )
+    @cog_slash(name="loop")
     async def _loop(self, ctx: SlashContext, mode: str):
         """
 
@@ -868,18 +824,7 @@ class Jukebox(Cog):
             player.set_repeat(False)
             await ctx.send(embed=mbed)
 
-    @cog_slash(
-        name="volume",
-        description="Sets the volume to a different level",
-        options=[
-            create_option(
-                name="level",
-                description="A number between 1 and 10",
-                required=True,
-                option_type=4
-            )
-        ]
-    )
+    @cog_slash(name="volume")
     async def _volume(self, ctx: SlashContext, level: int):
         """
 
@@ -927,18 +872,138 @@ class Jukebox(Cog):
             mbed = discord.Embed(title=f"Volume is now set to `{level}`", description="", colour=discord.Colour.blue())
             await ctx.send(embed=mbed)
 
-    @cog_slash(
-        name="queue",
-        description="Shows the queue of the current player"
-    )
+    @cog_slash(name="queue")
     async def _queue(self, ctx):
+        def get_queue_components(component_type: int) -> list:
+            """
+
+            Help method to quickly get components for a queue object.
+
+            Parameters
+            ----------
+            component_type: 1 -> left disabled; 2 -> right disabled; 3 -> nothing disabled
+
+            Returns
+            -------
+            list: list of action rows that fit the queue schema
+
+            """
+            if component_type == 1:
+                create_actionrow(
+                    create_button(
+                        style=2,
+                        label="◀◀",
+                        custom_id="queue_first",
+                        disabled=True
+                    )
+                )
+                return [
+                    {
+                        "type": 1,
+                        "components": [
+                            {
+                                "type": 2,
+                                "label": "◀◀",
+                                "style": 2,
+                                "custom_id": "queue_first",
+                                "disabled": True
+                            },
+                            {
+                                "type": 2,
+                                "label": "◀",
+                                "style": 2,
+                                "custom_id": "queue_left",
+                                "disabled": True
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶",
+                                "style": 2,
+                                "custom_id": "queue_right"
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶▶",
+                                "style": 2,
+                                "custom_id": "queue_last"
+                            }
+                        ]
+                    }
+                ]
+            elif component_type == 2:
+                return [
+                    {
+                        "type": 1,
+                        "components": [
+                            {
+                                "type": 2,
+                                "label": "◀◀",
+                                "style": 2,
+                                "custom_id": "queue_first"
+                            },
+                            {
+                                "type": 2,
+                                "label": "◀",
+                                "style": 2,
+                                "custom_id": "queue_left"
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶",
+                                "style": 2,
+                                "custom_id": "queue_right",
+                                "disabled": True
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶▶",
+                                "style": 2,
+                                "custom_id": "queue_last",
+                                "disabled": True
+                            }
+                        ]
+                    }
+                ]
+            elif component_type == 3:
+                return [
+                    {
+                        "type": 1,
+                        "components": [
+                            {
+                                "type": 2,
+                                "label": "◀◀",
+                                "style": 2,
+                                "custom_id": "queue_first"
+                            },
+                            {
+                                "type": 2,
+                                "label": "◀",
+                                "style": 2,
+                                "custom_id": "queue_left"
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶",
+                                "style": 2,
+                                "custom_id": "queue_right"
+                            },
+                            {
+                                "type": 2,
+                                "label": "▶▶",
+                                "style": 2,
+                                "custom_id": "queue_last"
+                            }
+                        ]
+                    }
+                ]
+
         """
 
         Command to display the songs that are staged in the queue.
 
         Parameters
         ----------
-        ctx: Object passed to communicate with discord_bot
+        ctx: Object passed to communicate with discord
 
         """
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
@@ -949,201 +1014,86 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: I'm not playing audio or being paused"))
             return
 
-        channel: int = player.fetch("channel")
-        if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: I could not get the channel I'm in"))
-            return
-        if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
-            return
-
-        if player.queue == [] and player.current is None:
-            mbed = discord.Embed(
-                title="Queue",
-                description="**Empty**",
-                colour=COLOUR
-            )
-            await ctx.send(embed=mbed)
+        if not player.queue:
+            # TODO: Program jukebox_logic and invoke current
+            messages.send(ctx.channel.id, embed={
+                "title": ":x: Only one song is playing",
+                "description": "",
+                "colour": Red
+            })
             return
 
-        if len(list(str(player.queue))) > 1:
-            pages = ceil(len(player.queue) / 10)
-            big_dict: dict = {1: {
+        pages = ceil(len(player.queue) / 10)
+        embed = discord.Embed(
+            title="Queue",
+            description="",
+            colour=COLOUR
+        )
+        if pages == 1:
+            big_dict: dict = {"1": {
                 "embed": {
                     "title": "Queue",
-                    "description": "",
-                    "colour": COLOUR,
-                    "fields": [
-                        {
-                            "name": "`Now playing`",
-                            "value": f"__[{player.current.title}]({player.current.uri})__",
-                            "inline": False
-                        }
-                    ]
+                    "description": f"__[{player.current.title}]({player.current.uri})__ | :mag_right: <@{player.current.requester}>",
+                    "colour": COLOUR
                 },
-                "components": [
-                    {
-                        "type": 1,
-                        "components": [
-                            {
-                                "type": 2,
-                                "label": "◀◀",
-                                "style": 1,
-                                "custom_id": "queue_skip_first",
-                                "disabled": True
-                            },
-                            {
-                                "type": 2,
-                                "label": "◀",
-                                "style": 1,
-                                "custom_id": "queue_skip_left",
-                                "disabled": True
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶",
-                                "style": 1,
-                                "custom_id": "queue_skip_right",
-                                "disabled": False
-                            },
-                            {
-                                "type": 2,
-                                "label": "▶▶",
-                                "style": 1,
-                                "custom_id": "queue_skip_last",
-                                "disabled": False
-                            }
-                        ]
-                    }
-                ]
+                "components": []
             }}
         else:
-            pages = 1
-            big_dict: dict = {1: {
+            big_dict: dict = {"1": {
                 "embed": {
                     "title": "Queue",
-                    "description": "",
+                    "description": f"__[{player.current.title}]({player.current.uri})__ | :mag_right: <@{player.current.requester}>",
                     "colour": COLOUR,
-                    "fields": [
-                        {
-                            "name": "`Now playing`",
-                            "value": f"__[{player.current.title}]({player.current.uri})__",
-                            "inline": False
-                        }
-                    ]
-                }
+                    "footer": {
+                        "text": f"Page 1/{pages}"
+                    }
+                },
+                "components": get_queue_components(1)
             }}
-            #TODO: do shit here
 
         for x in range(len(player.queue)):
-            if x % 10 == 0:
-                if int(list(str(x))[0]) + 1 == pages and pages != 1:
-                    big_dict[int(x / 10) + 1] = {
-                        "embed": {
-                            "title": "Queue",
-                            "description": "",
-                            "colour": COLOUR,
-                            "fields": [],
-                        },
-                        "components": [
-                            {
-                                "type": 1,
-                                "components": [
-                                    {
-                                        "type": 2,
-                                        "label": "◀◀",
-                                        "style": 1,
-                                        "custom_id": "queue_skip_first",
-                                        "disabled": False
-                                    },
-                                    {
-                                        "type": 2,
-                                        "label": "◀",
-                                        "style": 1,
-                                        "custom_id": "queue_skip_left",
-                                        "disabled": False
-                                    },
-                                    {
-                                        "type": 2,
-                                        "label": "▶",
-                                        "style": 1,
-                                        "custom_id": "queue_skip_right",
-                                        "disabled": True
-                                    },
-                                    {
-                                        "type": 2,
-                                        "label": ":fast_forward:",
-                                        "style": 1,
-                                        "custom_id": "▶▶",
-                                        "disabled": True
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                else:
-                    big_dict[int(x / 10) + 1] = {
-                        "embed": {
-                            "title": "Queue",
-                            "description": "",
-                            "colour": COLOUR,
-                            "fields": []
-                        },
-                        "components": [
-                            {
-                                "type": 1,
-                                "components": [
-                                    {
-                                        "type": 2,
-                                        "label": "◀◀",
-                                        "style": 1,
-                                        "custom_id": "queue_skip_first",
-                                        "disabled": False
-                                    },
-                                    {
-                                        "type": 2,
-                                        "label": "◀",
-                                        "style": 1,
-                                        "custom_id": "queue_skip_left",
-                                        "disabled": False
-                                    },
-                                    {
-                                        "type": 2,
-                                        "label": "▶",
-                                        "style": 1,
-                                        "custom_id": "queue_skip_right",
-                                        "disabled": False
-                                    },
-                                    {
-                                        "type": 2,
-                                        "label": ":fast_forward:",
-                                        "style": 1,
-                                        "custom_id": "▶▶",
-                                        "disabled": False
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-            if len(list(str(x))) > 1:
-                num = int(list(str(x))[0]) + 1
+            # TODO: Make Q compatible with more than 100 songs
+            if x > 9:
+                current_page: int = int(list(str(x))[0]) + 1  # We take the first number 10 -> 1 and increment it by one to get the current page
             else:
-                num = 1
-            big_dict[num]["embed"]["fields"].append({
-                "name": f"`{x + 1}`",
-                "value": f"__[{player.queue[x].title}]({player.queue[x].uri})__",
-                "inline": False
-            })
+                current_page: int = 1
+            if x % 10 == 0 and x != 0:
+                if current_page == pages:
+                    big_dict[str(current_page)] = {
+                        "embed": {
+                            "title": "Queue",
+                            "description": "",
+                            "colour": COLOUR,
+                            "footer": {
+                                "text": f"Page {current_page}/{pages}"
+                            }
+                        },
+                        "components": get_queue_components(2)
+                    }
+                    continue
+                else:
+                    big_dict[str(current_page)] = {
+                        "embed": {
+                            "title": "Queue",
+                            "description": "",
+                            "colour": COLOUR,
+                            "footer": {
+                                "text": f"Page {current_page}/{pages}"
+                            }
+                        },
+                        "components": get_queue_components(3)
+                    }
+                    continue
+            big_dict[str(current_page)]["embed"]["description"] += f"\n\n**{x + 1}** [{player.queue[x].title}]({player.queue[x].uri}) | :mag_right: <@{player.current.requester}>"
 
-        pprint(big_dict)
-        messages.send(ctx.channel.id, embed=big_dict[1]["embed"], components=big_dict[1]["components"])
+        msg = await ctx.send("Wait a second")
+        await msg.delete()
+        msg_id = messages.send(ctx.channel.id, embed=big_dict["1"]["embed"], components=big_dict["1"]["components"])["id"]
+        if pages != 1:
+            self.db.create_queue(ctx.guild.id, int(msg_id), big_dict, 1, pages)
+            await jukebox_logic.start_timer(ctx.channel.id, msg_id, 2)
 
-        # await ctx.send(embed=mbed)
-
-    @cog_slash(
-        name="current",
-        description="Shows information about the current song"
-    )
+    @cog_slash(name="current")
     async def _current(self, ctx: SlashContext):
         """
 
@@ -1216,18 +1166,7 @@ class Jukebox(Cog):
         await ctx.send(embed=mbed)
         yt.close()
 
-    @cog_slash(
-        name="remove",
-        description="Removes a song from the queue with the given index",
-        options=[
-            create_option(
-                name="index",
-                description="The index of the song that is going to be removed",
-                option_type=4,
-                required=True
-            )
-        ]
-    )
+    @cog_slash(name="remove")
     async def _remove(self, ctx: SlashContext, index: int):
         """
 
@@ -1283,10 +1222,7 @@ class Jukebox(Cog):
             )
             await ctx.send(embed=mbed)
 
-    @cog_slash(
-        name="removedupes",
-        description="Removes all duplicates from the queue"
-    )
+    @cog_slash(name="removedupes")
     async def _removedupes(self, ctx: SlashContext):
         """
 
@@ -1346,10 +1282,7 @@ class Jukebox(Cog):
         player.queue = entduped_tuple[0]
         await ctx.send(embed=await _get_embed("success", f":white_check_mark: Removed {entduped_tuple[1]}"))
 
-    @cog_slash(
-        name="leave",
-        description="Leaves the Voicechannel and cleans up the player, queue etc."
-    )
+    @cog_slash(name="leave")
     async def _leave(self, ctx: SlashContext):
         """
 

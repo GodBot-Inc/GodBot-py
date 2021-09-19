@@ -1,8 +1,9 @@
 import pymongo
-from src.discord_bot.errors import DuplicateEntry
+from typing import Dict
+
+from src.discord_bot.errors import *
 import time
 from src.discord_bot.CONSTANTS import USERNAME, PASSWORD
-import pprint
 
 
 class Singleton(object):
@@ -21,8 +22,6 @@ class Database(Singleton):
         self.client = pymongo.MongoClient("mongodb+srv://{}:{}@cluster0.z4ax5.mongodb.net/MyFirstDatabase?retryWrites=true&w=majority".format(USERNAME, PASSWORD))
         self.db = self.client.discord
         self.servers = self.db.Servers
-        self.members = self.db.Members
-        self.prisons = self.db.Prisons
         self.searches = self.db.Searches
         self.queues = self.db.Queues
 
@@ -46,11 +45,13 @@ class Database(Singleton):
             "cursor": 1
         })
 
-    def create_queue(self, serverID: int, messageID: int, queue_dict: dict):
+    def create_queue(self, serverID: int, messageID: int, queue_dict: dict, current_page: int, max_pages: int):
         self.queues.insert_one({
             "serverID": serverID,
             "messageID": messageID,
-            "queue_pages": queue_dict
+            "queue_pages": queue_dict,
+            "current_page": current_page,
+            "max_pages": max_pages
         })
 
     def update_server_name(self, serverID: int, server_name: str):
@@ -61,6 +62,15 @@ class Database(Singleton):
 
     def decrease_search_cursor(self, serverID: int, authorID: int, msgID: int):
         self.searches.update_one({"serverID": serverID, "authorID": authorID, "messageID": msgID}, {"$inc": {"cursor": -1}})
+
+    def update_queue_page(self, msgID: int, page: int):
+        self.searches.update_one({"messageID": msgID}, {"$set": {"current_page": page}})
+
+    def increase_queue_page(self, msgID: int):
+        self.searches.update_one({"messageID": msgID}, {"$inc": {"current_page": 1}})
+
+    def decrease_queue_page(self, msgID: int):
+        self.searches.update_one({"messageID": msgID}, {"$inc": {"current_page": -1}})
 
     def delete_server(self, serverID: int):
         self.servers.delete_one({"serverID": serverID})
@@ -77,73 +87,46 @@ class Database(Singleton):
             return True
         return False
 
-    def find_search(self, serverID: int, authorID: int, messageID: int):
+    def find_search(self, serverID: int, authorID: int, messageID: int) -> dict:
         count = self.searches.count_documents({"serverID": serverID, "authorID": authorID, "messageID": messageID})
         if count == 0:
-            return {}
+            raise NoEntriesFound
         search = self.searches.find_one({"serverID": serverID, "authorID": authorID, "messageID": messageID})
         return search
 
-    def find_prisons(self, serverID: int) -> list:  # For /checkprison
-        count = self.prisons.count_documents({"serverID": serverID})
+    def find_queue(self, msgID: int) -> int:
+        count = self.queues.count_documents({"messageID": msgID})
         if count == 0:
-            return []
-        prisons = self.prisons.find({"serverID": serverID})
-        return_list = []
-        for prison in prisons:
-            try:
-                name = prison["member_name"] + "#" + str(prison["member_discriminator"])
-                return_list.append("{} | {} | {}".format(name, prison["creation_date"], prison["reason"]))
-            except KeyError:
-                continue
-        return return_list
+            raise NoEntriesFound
+        return self.queues.find_one({"messageID": msgID})
 
-    def find_prison_ids(self, serverID: int):
-        count = self.prisons.count_documents({"serverID": serverID})
+    def find_queue_page(self, msgID: int) -> int:
+        count = self.queues.count_documents({"messageID": msgID})
         if count == 0:
-            return []
-        prisons = self.prisons.find({"serverID": serverID})
-        return_list = []
-        for prison in prisons:
-            try:
-                return_list.append(prison["prisonID"])
-            except KeyError:
-                continue
-        return return_list
+            raise NoEntriesFound
+        return self.queues.find_one({"messageID": msgID})["current_page"]
 
-    def find_is_imprisoned(self, serverID: int, memberID: int) -> bool:
-        count = self.prisons.count_documents({"serverID": serverID, "memberID": memberID})
+    def find_queue_page_message(self, messageID: int, page: int) -> Dict[dict, int]:
+        count = self.searches.count_documents({"messageID": messageID})
         if count == 0:
-            return False
-        return True
+            raise NoEntriesFound
+        queue = self.queues.find_one({"messageID": messageID})
+        return {
+            "page": queue["queue_pages"][page],
+            "max_pages": queue["max_pages"]
+        }
 
-    def find_prison_id(self, serverID: int, memberID: int) -> int:
-        count = self.prisons.count_documents({"serverID": serverID})
+    def find_max_queue_page(self, msgID: int) -> int:
+        count = self.searches.count_documents({"messageID": msgID})
         if count == 0:
-            return 0
-        prison = self.prisons.find_one({"serverID": serverID, "memberID": memberID})
-        try:
-            return prison["prisonID"]
-        except KeyError:
-            return 0
-
-    def find_prisoner_roles(self, serverID: int, memberID: int) -> list:
-        count = self.prisons.count_documents({"serverID": serverID, "memberID": memberID})
-        if count == 0:
-            return []
-        result = self.prisons.find_one({"serverID": serverID, "memberID": memberID})
-        try:
-            return result["roles"]
-        except KeyError:
-            return []
+            raise NoEntriesFound
+        queue = self.queues.find_one({"messageID": msgID})
+        return queue["pages"]
 
     def clear_server(self, serverID: int):
         self.servers.delete_one({"serverID": serverID})
         self.searches.delete_many({"serverID": serverID})
         self.queues.delete_many({"serverID": serverID})
-
-    def clear_prisons(self, serverID: int):
-        self.prisons.delete_many({"serverID": serverID})
 
 
 if __name__ == "__main__":

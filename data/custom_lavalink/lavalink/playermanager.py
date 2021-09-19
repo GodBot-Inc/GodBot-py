@@ -101,7 +101,7 @@ class PlayerManager:
             player = self.players.pop(guild_id)
             player.cleanup()
 
-    def get(self, guild_id: int):
+    def get(self, guild_id: int, channel_id: int = None):
         """
         Gets a player from cache.
 
@@ -109,14 +109,17 @@ class PlayerManager:
         ----------
         guild_id: :class:`int`
             The guild_id associated with the player to get.
+        channel_id: :class:`int`
+            The channel_id to get a specific player so more than one can run on a single server
 
         Returns
         -------
         Optional[:class:`DefaultPlayer`]
         """
+        # return self.players.get(guild_id).get(channel_id)
         return self.players.get(guild_id)
 
-    def create(self, guild_id: int, region: str = 'eu', endpoint: str = None, node: Node = None):
+    def create(self, guild_id: int, channel_id: int = None, region: str = 'eu', endpoint: str = None, node: Node = None):
         """
         Creates a player if one doesn't exist with the given information.
 

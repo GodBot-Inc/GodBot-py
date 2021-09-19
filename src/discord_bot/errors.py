@@ -1,5 +1,15 @@
-class DuplicateEntry(Exception):
+class DatabaseError(Exception):
+    """Gets raised if an error occurs in the database"""
+    pass
+
+
+class DuplicateEntry(DatabaseError):
     """Gets raised if a duplicate exists in the database"""
+    pass
+
+
+class NoEntriesFound(DatabaseError):
+    """Gets raised if a find request can't find any entries"""
     pass
 
 

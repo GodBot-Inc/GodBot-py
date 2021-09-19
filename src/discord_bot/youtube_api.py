@@ -1,6 +1,5 @@
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from pprint import pprint
 from src.discord_bot.CONSTANTS import YT_API_KEY
 
 """
@@ -51,8 +50,6 @@ class Api:
         except HttpError as e:
             print(f"Could not get statistics for {videoId} Error Details {e}")
             return
-        pprint(response)
-        pprint(response["items"][0]["statistics"])
         raw_views = "".join(list(response["items"][0]["statistics"]["viewCount"])[::-1])
         try:
             raw_likes = "".join(list(response["items"][0]["statistics"]["likeCount"])[::-1])
@@ -126,7 +123,6 @@ class Api:
             if response["items"][0]["snippet"]["liveBroadcastContent"] == "live":
                 print(f"The given link {url} is a livestream")
                 continue
-            pprint(response)
             self.title.append(response["items"][0]["snippet"]["title"])
             self.thumbnail.append(response["items"][0]["snippet"]["thumbnails"]["high"]["url"])
             self.search_statistics(Id)

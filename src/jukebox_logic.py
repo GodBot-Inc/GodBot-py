@@ -18,6 +18,7 @@ db = Database()
 
 class Singleton(object):
     """An object that will only exist once, even if you initialize it multiple times"""
+
     def __new__(cls, *args, **kwds):
         it = cls.__dict__.get("__it__")
         if it is not None:
@@ -31,9 +32,26 @@ class Singleton(object):
             self.client = client
 
 
-async def start_timer(channel_id: int, msg_id: int):
-    def get_ar(type: str):
-        if type == "search":
+async def start_timer(channel_id: int, msg_id: int, type: int) -> None:
+    """
+
+    A function that is called when a message with buttons is created.
+    After 5 minutes the buttons get disabled.
+
+    Parameters
+    ----------
+    channel_id
+    msg_id
+    type: 1 -> search; 2 -> queue
+
+    Returns
+    ---------
+    None
+
+    """
+
+    def get_ar(type: int):
+        if type == 1:
             return [
                 {
                     "type": 1,
@@ -62,9 +80,49 @@ async def start_timer(channel_id: int, msg_id: int):
                     ]
                 }
             ]
+        elif type == 2:
+            return [
+                {
+                    "type": 1,
+                    "components": [
+                        {
+                            "type": 1,
+                            "components": [
+                                {
+                                    "type": 2,
+                                    "label": "◀◀",
+                                    "style": 2,
+                                    "custom_id": "queue_first",
+                                    "disabled": True
+                                },
+                                {
+                                    "type": 2,
+                                    "label": "◀",
+                                    "style": 2,
+                                    "custom_id": "queue_left",
+                                    "disabled": True
+                                },
+                                {
+                                    "type": 2,
+                                    "label": "▶",
+                                    "style": 2,
+                                    "custom_id": "queue_right",
+                                    "disabled": True
+                                },
+                                {
+                                    "type": 2,
+                                    "label": "▶▶",
+                                    "style": 2,
+                                    "custom_id": "queue_last",
+                                    "disabled": True
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
 
     """Here we start a timer that expires after 300 seconds"""
-    #TODO: Differentiate between different things (queue, search)
     start = time()
     while time() - start < 300:
         """While 120 have not passed"""
@@ -81,8 +139,11 @@ async def start_timer(channel_id: int, msg_id: int):
             db.delete_queue(msg_id)
             return
         await sleep(30)  # Cooldown so we don't request the discord_bot API too often
-    messages.edit(channel_id, msg_id, components=get_ar("search"))
-    db.delete_search(msg_id)
+    messages.edit(channel_id, msg_id, components=get_ar(type))
+    if type == 1:
+        db.delete_search(msg_id)
+    elif type == 2:
+        db.delete_queue(msg_id)
 
 
 class ClientLogic(Singleton):
@@ -217,7 +278,7 @@ class ClientLogic(Singleton):
             raise PlayerChannelNotFound
         if player_channel != channel:
             pass
-        #TODO: Rewrite src.jukebox.py play so it fit's the bot and the api
+        # TODO: Rewrite src.jukebox.py play so it fit's the bot and the api
 
 
 async def search(search: str, results: int = 8, songfilter: str = "True"):

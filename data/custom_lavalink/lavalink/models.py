@@ -342,9 +342,12 @@ class DefaultPlayer(BasePlayer):
         Before skipping we disable repeat to prevent weird looping.
         If it was activated we activate it after skipping so the current song gets looped.
         """
+        loop_state: bool = self.repeat
+        self.repeat = False
         if amount is not None:
             self.queue = self.queue[amount:]
         await self.play()
+        self.repeat = loop_state
 
     def set_repeat(self, repeat: bool):
         """
