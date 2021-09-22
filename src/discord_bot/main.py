@@ -1,6 +1,10 @@
 import os
 
 import discord
+
+import sys
+sys.path.insert(0,"/volume1/NAS Main Folder/GodBot/")
+
 from discord.ext import commands
 from discord.utils import get
 from discord_slash import SlashCommand

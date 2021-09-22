@@ -549,7 +549,7 @@ class Jukebox(Cog):
         if yt.thumbnail == [] or yt.title == [] or yt.url == []:
             if songfilter == "True":
                 await ctx.send(
-                    embed=await _get_embed("error", f":x: No songs found that are matching the keyword {search}"))
+                    embed=await _get_embed("error", f":x: No songs  found that are matching the keyword {search}"))
             else:
                 await ctx.send(
                     embed=await _get_embed("error", f":x: No videos found that are matching the keyword {search}"))
@@ -721,7 +721,6 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
             return
 
-        loop_state = player.repeat
         mbed = discord.Embed(title="",
                              description=f":next_track: **Skipped** [{player.current.title}]({player.current.uri})",
                              colour=discord.Colour.blue())
@@ -770,7 +769,9 @@ class Jukebox(Cog):
         await player.skip(index - 1)
         await ctx.send(
             embed=discord.Embed(
-                title=f":next_track: **Skipped** to song number `[{song.title}]({song.uri})`"
+                title="",
+                description=":next_track: **Skipped** to song [{}]({})".format(song.title, song.uri),
+                colour=COLOUR
             )
         )
 
