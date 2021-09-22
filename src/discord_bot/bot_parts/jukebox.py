@@ -825,6 +825,11 @@ class Jukebox(Cog):
             player.set_repeat(False)
             await ctx.send(embed=mbed)
 
+    @cog_slash(name="loopqueue")
+    async def _loopqueue(self, ctx: SlashContext, mode: str, smart_modifying: str = "True"):
+        #TODO: Write loopqueue (save in database)
+        pass
+
     @cog_slash(name="volume")
     async def _volume(self, ctx: SlashContext, level: int):
         """
@@ -917,6 +922,16 @@ class Jukebox(Cog):
             return
         if not player.is_playing and not player.paused:
             await ctx.send(embed=await _get_embed("error", ":x: I'm not playing audio or being paused"))
+            return
+
+        if not player.current:
+            await ctx.send(
+                embed=discord.Embed(
+                    title=":x: I'm currently not playing audio",
+                    description="",
+                    colour=discord.Colour.red()
+                )
+            )
             return
 
         if not player.queue:

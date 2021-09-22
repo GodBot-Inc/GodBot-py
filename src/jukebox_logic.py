@@ -144,6 +144,7 @@ async def start_timer(msg, type: int) -> None:
             components=[create_actionrow(
                 create_button(
                     style=5,
+                    label="Url",
                     url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
                     disabled=True
                 ),
