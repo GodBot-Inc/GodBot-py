@@ -17,7 +17,8 @@ from math import ceil
 from pprint import pprint
 from src.discord_bot.discord_api import messages
 from src.discord_bot.youtube_api import Api
-from src import jukebox_logic
+from src import jukebox_api_logic
 from discord.ext.commands import Cog
 from discord_slash.cog_ext import cog_slash
 from discord_slash.utils.manage_components import ButtonStyle
+from utility.get import ActionRows

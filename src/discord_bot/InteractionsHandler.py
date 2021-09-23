@@ -3,9 +3,11 @@ from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 
+import utility.get.ActionRows
 from src.discord_bot.DatabaseCommunication import Database
 from src.discord_bot.discord_api import messages
-from src import jukebox_logic
+from src import jukebox_api_logic
+from utility.get.ActionRows import queue, search
 
 db = Database()
 
@@ -14,7 +16,7 @@ COLOUR = 0xC2842F
 
 def define_logic():
     global logic
-    logic = jukebox_logic.ClientLogic()
+    logic = jukebox_api_logic.ClientLogic()
 
 
 define_logic()
@@ -25,7 +27,9 @@ class EventHandler:
     async def handle(ctx):
         """This function is called if an Event (Button Press) should be handled"""
         # Search
-        if ctx.custom_id == "search_right":
+        if ctx.custom_id == "search_play":
+            pass
+        elif ctx.custom_id == "search_right":
             await EventHandler._on_right(ctx)
         elif ctx.custom_id == "search_left":
             await EventHandler._on_left(ctx)
@@ -202,36 +206,36 @@ class EventHandler:
     @staticmethod
     async def _on_left(ctx):
         """This function should normally be called from handle, but can be called normally if you pass ctx"""
-        search = db.find_search_exists(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
-        if not search:
+        search_object = db.find_search_exists(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
+        if not search_object:
             await ctx.send(":x: You pressed a button of someone elses search!")
             return
-        search = db.find_search(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
-        if search["cursor"] == 1:
+        search_object = db.find_search(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
+        if search_object.get("cursor") == 1:
             """Here we update nothing for the user. The message stays the same. We do this so there is not Interaction failed message"""
-            mbed = await EventHandler.__get_embed(ctx, search["songs"], search["cursor"])
+            mbed = await EventHandler.__get_embed(ctx, search_object.get("songs"), search_object.get("cursor"))
             await ctx.edit_origin(embed=mbed)
             return
-        mbed = await EventHandler.__get_embed(ctx, search["songs"], search["cursor"] - 1)
-        ar = await EventHandler.__get_actionrow("normal", search["songs"][str(search["cursor"] - 1)]["url"])
-        await ctx.edit_origin(embed=mbed, components=[ar])
+        mbed = await EventHandler.__get_embed(ctx, search_object.get("songs"), search_object.get("cursor") - 1)
+        ar = await EventHandler.__get_actionrow("normal", search_object["songs"][str(search_object["cursor"] - 1)]["url"])
+        await ctx.edit_origin(embed=mbed, components=ar)
         db.decrease_search_cursor(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
 
     @staticmethod
     async def _on_right(ctx):
         """This function should normally be called from handle, but can be called normally if you pass ctx"""
-        search = db.find_search_exists(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
-        if not search:
+        search_object = db.find_search_exists(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
+        if not search_object:
             await ctx.send(":x: You pressed a button from an other search!")
             return
-        search = db.find_search(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
-        if list(search["songs"].keys())[-1] == str(search["cursor"]):
+        search_object = db.find_search(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
+        if list(search_object["songs"].keys())[-1] == str(search_object["cursor"]):
             """Here we update nothing for the user. The message stays the same. We do this so there is not Interaction failed message"""
-            mbed = await EventHandler.__get_embed(ctx, search["songs"], search["cursor"])
+            mbed = await EventHandler.__get_embed(ctx, search_object["songs"], search_object["cursor"])
             await ctx.edit_origin(embed=mbed)
             return
-        mbed = await EventHandler.__get_embed(ctx, search["songs"], search["cursor"] + 1)
-        ar = await EventHandler.__get_actionrow("normal", search["songs"][str(search["cursor"] + 1)]["url"])
+        mbed = await EventHandler.__get_embed(ctx, search_object["songs"], search_object["cursor"] + 1)
+        ar = search(search_object["songs"][str(search_object["cursor"] + 1)]["url"])
         await ctx.edit_origin(embed=mbed, components=[ar])
         db.increase_search_cursor(ctx.guild.id, ctx.author.id, ctx.origin_message_id)
 
@@ -249,16 +253,16 @@ class EventHandler:
         -------
 
         """
-        queue: dict = db.find_queue(ctx.origin_message_id)
+        queue_object: dict = db.find_queue(ctx.origin_message_id)
         embed = discord.Embed(
             title="Queue",
-            description=queue.get("descriptions").get("1"),
+            description=queue_object.get("descriptions").get("1"),
             colour=COLOUR
         )
-        embed.set_footer(text="Page 1/{}".format(queue.get("max_pages")))
+        embed.set_footer(text="Page 1/{}".format(queue_object.get("max_pages")))
         await ctx.edit_origin(
             embed=embed,
-            components=await EventHandler.__get_actionrow("queue_no_left")
+            components=queue("left_disabled")
         )
 
         db.update_queue_page(ctx.origin_message_id, 1)
@@ -277,26 +281,26 @@ class EventHandler:
         -------
 
         """
-        queue: dict = db.find_queue(ctx.origin_message_id)
+        queue_object: dict = db.find_queue(ctx.origin_message_id)
 
         embed = discord.Embed(
             title="Queue",
-            description=queue.get("descriptions").get(str(queue.get("current_page") - 1)),
+            description=queue_object.get("descriptions").get(str(queue_object.get("current_page") - 1)),
             colour=COLOUR
         )
-        embed.set_footer(text="Page {}/{}".format(queue.get("current_page") - 1, queue.get("max_pages")))
+        embed.set_footer(text="Page {}/{}".format(queue_object.get("current_page") - 1, queue_object.get("max_pages")))
 
-        if queue.get("current_page") - 1 == 1:
-            components = await EventHandler.__get_actionrow("queue_no_left")
+        if queue_object.get("current_page") - 1 == 1:
+            components = queue("left_disabled")
         else:
-            components = await EventHandler.__get_actionrow("queue")
+            components = queue()
 
         await ctx.edit_origin(
             embed=embed,
             components=components
         )
 
-        db.update_queue_page(ctx.origin_message_id, queue.get("current_page") - 1)
+        db.update_queue_page(ctx.origin_message_id, queue_object.get("current_page") - 1)
 
     @staticmethod
     async def _on_queue_right(ctx):
@@ -312,26 +316,26 @@ class EventHandler:
         -------
 
         """
-        queue: dict = db.find_queue(ctx.origin_message_id)
+        queue_object: dict = db.find_queue(ctx.origin_message_id)
 
         embed = discord.Embed(
             title="Queue",
-            description=queue.get("descriptions").get(str(queue.get("current_page") + 1)),
+            description=queue_object.get("descriptions").get(str(queue_object.get("current_page") + 1)),
             colour=COLOUR
         )
-        embed.set_footer(text="Page {}/{}".format(queue.get("current_page") + 1, queue.get("max_pages")))
+        embed.set_footer(text="Page {}/{}".format(queue_object.get("current_page") + 1, queue_object.get("max_pages")))
 
-        if queue.get("current_page") + 1 == queue.get("max_pages"):
-            components = await EventHandler.__get_actionrow("queue_no_right")
+        if queue_object.get("current_page") + 1 == queue_object.get("max_pages"):
+            components = queue("right_disabled")
         else:
-            components = await EventHandler.__get_actionrow("queue")
+            components = queue()
 
         await ctx.edit_origin(
             embed=embed,
             components=components
         )
 
-        db.update_queue_page(ctx.origin_message_id, queue.get("current_page") + 1)
+        db.update_queue_page(ctx.origin_message_id, queue_object.get("current_page") + 1)
 
     @staticmethod
     async def _on_queue_last(ctx):
@@ -347,18 +351,18 @@ class EventHandler:
         -------
 
         """
-        queue: dict = db.find_queue(ctx.origin_message_id)
+        queue_object: dict = db.find_queue(ctx.origin_message_id)
 
         embed = discord.Embed(
             title="Queue",
-            description=queue.get("descriptions").get(str(queue.get("max_pages"))),
+            description=queue_object.get("descriptions").get(str(queue_object.get("max_pages"))),
             colour=COLOUR
         )
-        embed.set_footer(text="Page {}/{}".format(queue.get("max_pages"), queue.get("max_pages")))
+        embed.set_footer(text="Page {}/{}".format(queue_object.get("max_pages"), queue_object.get("max_pages")))
 
         await ctx.edit_origin(
             embed=embed,
-            components=await EventHandler.__get_actionrow("queue_no_right")
+            components=queue("right_disabled")
         )
 
-        db.update_queue_page(ctx.origin_message_id, queue.get("max_pages"))
+        db.update_queue_page(ctx.origin_message_id, queue_object.get("max_pages"))

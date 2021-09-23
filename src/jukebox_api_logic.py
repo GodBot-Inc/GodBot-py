@@ -210,107 +210,7 @@ class ClientLogic(Singleton):
             return
         await ws.voice_state(str(guild_id), str(channel_id))
 
-    async def play(self, url: str, guild_id: int, guild_region: str, channel: int = None, from_api: bool = False):
-        async def check_url(checked_url: str) -> Tuple[str, str, str]:
-            """
-
-            A helper function to determine whether the given url is a video- or playlist-url.
-            It also returns the Id to access either the playlist or the video.
-
-            Parameters
-            ----------
-            checked_url: The given url that's going to be checked
-
-            Returns
-            -------
-            Tuple[str, str, str]: first is the type of the link ("music"/"normal", "playlist"/"video", ID)
-
-            """
-
-            async def valid_url(validate_url: str) -> bool:
-                """
-
-                A function that sends a get request to the given link so you can test if it is a valid one.
-
-                Parameters
-                ----------
-                validate_url: The url that should be tested
-
-                Returns
-                -------
-                bool: Whether the website is callable or not
-
-                """
-                async with aiohttp.ClientSession() as session:
-                    try:
-                        async with session.get(validate_url) as resp:
-                            pass
-                    except aiohttp.client_exceptions.InvalidURL:
-                        return False
-                    else:
-                        return True
-
-            async def yt_url_processing(processed_url: str) -> Tuple[str, str, str]:
-                """
-
-                Parameters
-                ----------
-                processed_url: The url that should be processed
-
-                Returns
-                -------
-                Tuple[str, str, str]: first is the type of the link ("music"/"normal", "playlist"/"video", ID)
-
-                """
-                try:
-                    playlist_url: str = checked_url.split("list=")[1]
-                except IndexError:  # Url is not a playlist
-                    try:
-                        videoId: str = checked_url.split("watch?v=")[1]
-                    except IndexError:
-                        raise VideoTypeNotFound
-
-                    if "music.youtube.com" in url:
-                        return "music", "video", videoId
-                    elif "youtube.com" in url:
-                        return "normal", "video", videoId
-                    else:
-                        raise VideoTypeNotFound
-                else:
-                    try:
-                        playlist_url: str = playlist_url.split("&")[0]
-                    except IndexError:
-                        pass
-
-                    if "music.youtube.com" in url:
-                        return "music", "playlist", playlist_url
-                    elif "youtube.com" in url:
-                        return "normal", "playlist", playlist_url
-                    else:
-                        raise VideoTypeNotFound
-
-            if not await valid_url(url):
-                raise InvalidURL
-
-            if "youtube.com" in url:
-                return await yt_url_processing(url)
-            else:
-                raise InvalidURL
-
-        if not from_api:
-            try:
-                url_type: tuple = await check_url(url)
-            except (InvalidURL, VideoTypeNotFound):
-                if channel is not None:
-                    messages.send(channel,
-                                  content="",
-                                  embed={
-                                      "title": ":x: Invalid Url.\n:white_ckeck_mark: Supported:\n-Youtube Music playlist/video\n-Youtube playlist/video",
-                                      "description": "",
-                                      "color": Red
-                                  })
-                    return
-
+    async def play(self, platform: str, url: str, url_type: str, guild_id: int, guild_region: str, channel: int = None):
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(guild_id)
         if player is None:
             player = self.client.music.player_manager.create(guild_id, endpoint=guild_region)
@@ -318,20 +218,8 @@ class ClientLogic(Singleton):
             await self.connect_to(guild_id, channel)
             player.store("channel", channel)
 
-        player_channel: int = player.fetch("channel")
-        if player_channel is None:
-            if player_channel is not None:
-                messages.send(channel,
-                              embed={
-                                  "title": ":x: I could not get the channel I'm in",
-                                  "description": "",
-                                  "color": Red
-                              })
-                return
-            raise PlayerChannelNotFound
-        if player_channel != channel:
+        if platform == "youtube":
             pass
-        # TODO: Rewrite src.jukebox.py play so it fit's the bot and the api
 
 
 async def search(search: str, results: int = 8, songfilter: str = "True"):

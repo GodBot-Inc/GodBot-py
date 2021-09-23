@@ -1,5 +1,4 @@
 from . import *
-from src.Api import flask_api
 
 COLOUR = 0xC2842F
 
@@ -38,9 +37,8 @@ class Jukebox(Cog):
         self.client.music.add_node(LAVALINK_IP, LAVALINK_PORT, LAVALINK_PW, "eu", "music-node")
         self.client.add_listener(self.client.music.voice_update_handler, "on_socket_response")
         self.client.music.add_event_hook(self.track_hook)
-        self.logic = jukebox_logic.ClientLogic(client)
+        self.logic = jukebox_api_logic.ClientLogic(client)
         print("Jukebox extension loaded")
-        # flask_api.start_server()
 
     async def track_hook(self, event):
         if isinstance(event, lavalink.events.QueueEndEvent):
@@ -92,41 +90,28 @@ class Jukebox(Cog):
 
         results = max(min(results, 12), 2)
 
-        song_dictionary: dict = await jukebox_logic.search(search, results, songfilter)
+        song_dictionary: dict = await jukebox_api_logic.search(search, results, songfilter)
 
-        page = 1
-        buttons = [
-            create_button(
-                style=5,
-                label="Url",
-                url=song_dictionary["1"]["url"]
-            ),
-            create_button(
-                style=ButtonStyle.grey,
-                label="◀",
-                custom_id="search_left"
-            ),
-            create_button(
-                style=ButtonStyle.grey,
-                label="▶",
-                custom_id="search_right"
-            )
-        ]
-        ar = create_actionrow(*buttons)
-        current = song_dictionary[str(page)]
+        ar = ActionRows.search(song_dictionary.get("1").get("url"))
+
         mbed = discord.Embed(
-            title="`{}`".format(current["title"]),
+            title="`{}`".format(song_dictionary.get("1")["title"]),
             description="",
             colour=COLOUR
         )
         mbed.add_field(name=":eye:", value="{}".format(song_dictionary["1"]["views"]))
-        mbed.add_field(name="Page:", value="{}/{}".format(page, len(song_dictionary)))
-        mbed.set_thumbnail(url=song_dictionary[str(page)]["thumbnail"])
+        mbed.add_field(name="Page:", value="{}/{}".format(1, len(song_dictionary)))
+        mbed.set_thumbnail(url=song_dictionary.get("1").get("thumbnail"))
         mbed.set_footer(icon_url=ctx.author.avatar_url,
                         text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
-        msg: discord.Message = await ctx.send(embed=mbed, components=[ar])
+
+        msg: discord.Message = await ctx.send(
+            embed=mbed,
+            components=ActionRows.search(song_dictionary.get("1").get("url"))
+        )
+
         self.db.create_search(ctx.guild.id, ctx.author.id, msg.id, song_dictionary)
-        await jukebox_logic.start_timer(msg, 1)
+        await jukebox_api_logic.start_timer(msg, 1)
 
     async def play_video(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, videoId: str,
                          playlist: bool = False, ytMusic: bool = False) -> bool:
@@ -407,7 +392,6 @@ class Jukebox(Cog):
             await ctx.send(embed=await _get_embed("error",
                                                   ":x: Invalid Url. :white_check_mark: Supported:\n*Youtube Music playlist/video\n*Youtube playlist/video"))
             return
-        print(url_type)
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
@@ -771,7 +755,7 @@ class Jukebox(Cog):
             embed=discord.Embed(
                 title="",
                 description=":next_track: **Skipped** to song [{}]({})".format(song.title, song.uri),
-                colour=COLOUR
+                colour=discord.Colour.blue()
             )
         )
 
@@ -880,33 +864,6 @@ class Jukebox(Cog):
 
     @cog_slash(name="queue")
     async def _queue(self, ctx):
-        def get_actionrow(component_type: int) -> list:
-            if component_type == 1:
-                return [create_actionrow(
-                    create_button(
-                        style=2,
-                        label="◀◀",
-                        custom_id="queue_first",
-                        disabled=True
-                    ),
-                    create_button(
-                        style=2,
-                        label="◀",
-                        custom_id="queue_left",
-                        disabled=True
-                    ),
-                    create_button(
-                        style=2,
-                        label="▶",
-                        custom_id="queue_right"
-                    ),
-                    create_button(
-                        style=2,
-                        label="▶▶",
-                        custom_id="queue_last"
-                    )
-                )]
-
         """
 
         Command to display the songs that are staged in the queue.
@@ -970,34 +927,11 @@ class Jukebox(Cog):
 
             msg = await ctx.send(
                 embed=embed,
-                components=[create_actionrow(
-                    create_button(
-                        style=2,
-                        label="◀◀",
-                        custom_id="queue_first",
-                        disabled=True
-                    ),
-                    create_button(
-                        style=2,
-                        label="◀",
-                        custom_id="queue_left",
-                        disabled=True
-                    ),
-                    create_button(
-                        style=2,
-                        label="▶",
-                        custom_id="queue_right"
-                    ),
-                    create_button(
-                        style=2,
-                        label="▶▶",
-                        custom_id="queue_last"
-                    )
-                )]
+                components=ActionRows.queue("left_disabled")
             )
 
             self.db.create_queue(ctx.guild.id, msg.id, descriptions, 1, pages)
-            await jukebox_logic.start_timer(msg, 2)
+            await jukebox_api_logic.start_timer(msg, 2)
         else:
             await ctx.send(
                 embed=discord.Embed(
@@ -1077,8 +1011,8 @@ class Jukebox(Cog):
         mbed.add_field(name=":link:", value=f"{player.current.uri}", inline=False)
         mbed.set_footer(icon_url=ctx.author.avatar_url,
                         text=f"Searched by {ctx.author.display_name}#{ctx.author.discriminator}")
-        await ctx.send(embed=mbed)
         yt.close()
+        await ctx.send(embed=mbed)
 
     @cog_slash(name="remove")
     async def _remove(self, ctx: SlashContext, index: int):
