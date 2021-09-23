@@ -3,32 +3,6 @@ from . import *
 COLOUR = 0xC2842F
 
 
-async def _get_embed(mbed_type: str, content: str) -> discord.Embed:
-    """A helper function that returns either a short success embed or a short error embed.
-
-    Args:
-        mbed_type (str): Whether the message should be a success or an error message.
-        content (str): The content of the message.
-
-    Returns:
-        discord.Embed: The requested message.
-    """
-    if mbed_type == "success":
-        mbed = discord.Embed(
-            title=f"{content}",
-            description="",
-            colour=discord.Colour.green()
-        )
-        return mbed
-    elif mbed_type == "error":
-        mbed = discord.Embed(
-            title=f"{content}",
-            description="",
-            colour=discord.Colour.red()
-        )
-        return mbed
-
-
 class Jukebox(Cog):
     def __init__(self, client):
         self.client = client
@@ -86,13 +60,30 @@ class Jukebox(Cog):
             results (int, optional): How many results should be shown. Defaults to 8.
             songfilter (str, optional): Whether to only show songs. Defaults to "True".
         """
+        def get_dict():
+            yt = Api()
+
+            if songfilter == "True":
+                yt.search(search, results, True)
+            else:
+                yt.search(search, results, False)
+
+            song_dictionary: dict = {}
+            for x in range(yt.found):
+                song_dictionary[str(x + 1)] = {"title": yt.title[x], "thumbnail": yt.thumbnail[x], "url": yt.url[x],
+                                               "views": yt.views[x]}
+            yt.close()
+            return song_dictionary
+
         await ctx.defer()
 
         results = max(min(results, 12), 2)
 
-        song_dictionary: dict = await jukebox_api_logic.search(search, results, songfilter)
-
-        ar = ActionRows.search(song_dictionary.get("1").get("url"))
+        try:
+            song_dictionary: dict = get_dict()
+        except HttpError:
+            await ctx.send(embed=Embed.error("The YouTube Api didn't respond"))
+            return
 
         mbed = discord.Embed(
             title="`{}`".format(song_dictionary.get("1")["title"]),
@@ -114,7 +105,7 @@ class Jukebox(Cog):
         await jukebox_api_logic.start_timer(msg, 1)
 
     async def play_video(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, videoId: str,
-                         playlist: bool = False, ytMusic: bool = False) -> bool:
+                         playlist: bool = False, platform: str = "youtube") -> bool:
         """
 
         This function plays a single video in discord_bot.
@@ -127,13 +118,13 @@ class Jukebox(Cog):
         player: The player that plays the audio
         videoId: The YoutubeID of the video that's going to be played
         playlist: Whether to send a play message or not
-        ytMusic: Whether to search in YtMusic or not
+        platform: From which platform the video should be taken
 
         """
-        if ytMusic:
-            results: dict = await player.node.get_tracks(f"https://music.www.youtube.com/watch?v={videoId}")
-        else:
+        if platform == "youtube":
             results: dict = await player.node.get_tracks(f"https://www.youtube.com/watch?v={videoId}")
+        else:
+            raise GodBotError
 
         if not results["tracks"]:
             raise VideoNotFound
@@ -196,7 +187,7 @@ class Jukebox(Cog):
             await player.play()
 
     async def play_playlist(self, ctx: SlashContext, player: lavalink.models.DefaultPlayer, playlistId: str = None,
-                            videoIds: tuple = None, ytMusic: bool = False):
+                            videoIds: tuple = None, platform: str = "youtube"):
         """
 
         This method plays a playlist either from a playlistId or from several videoIds.
@@ -208,7 +199,7 @@ class Jukebox(Cog):
         player: The player that plays audio
         playlistId: The ID that youtube have that playlist as an identifier. Here used to get the videos from it. Defaults to None
         videoIds: If you want to play with this method and you don't have a playlistId put some videoIds in a tuple and pass it. Defaults to None
-        ytMusic: Whether to search the videos on ytMusic or not
+        platform: From which platform the playlist should be played
 
         """
         yt = Api()
@@ -218,6 +209,9 @@ class Jukebox(Cog):
         player_state: bool = False
         if player.is_playing or player.paused:
             player_state = True
+
+        if playlistId is None and videoIds is None:
+            raise PlaylistNotFound
 
         msg = await ctx.send(embed=discord.Embed(title="Processing Playlist", description="", colour=COLOUR))
 
@@ -381,9 +375,9 @@ class Jukebox(Cog):
                 raise InvalidURL
 
         await ctx.defer()
+
         if ctx.author.voice is None:
-            await ctx.send(
-                embed=await _get_embed(mbed_type="error", content=":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error("You are not connected to a Voicechannel"))
             return
 
         try:
@@ -405,31 +399,17 @@ class Jukebox(Cog):
         if channel != ctx.author.voice.channel.id:
             await ctx.send(embed=Embed.error(":x: We are not in the same channel"))
 
-        if url_type[0] == "normal" and url_type[1] == "video":
+        if url_type[1] == "video":
             try:
-                await self.play_video(ctx, player, url_type[2])
+                await self.play_video(ctx, player, url_type[2], platform=url_type[0])
             except VideoNotFound:
-                await ctx.send(embed=Embed.error(":x: Player could not get the track"))
+                await ctx.send(embed=Embed.error("Could not find the video"))
 
-        elif url_type[0] == "music" and url_type[1] == "video":
+        elif url_type[1] == "playlist":
             try:
-                await self.play_video(ctx, player, url_type[2], ytMusic=True)
-            except VideoNotFound:
-                await ctx.send(embed=Embed.error(":x: Player could not get the track"))
-
-        elif url_type[0] == "normal" and url_type[1] == "playlist":
-            try:
-                await self.play_playlist(ctx, player, url_type[2])
+                await self.play_playlist(ctx, player, url_type[2], platform=url_type[0])
             except PlaylistNotFound:
-                await ctx.send(
-                    embed=Embed.error(":x: Playlist could not be processed. It might be private"))
-
-        elif url_type[0] == "music" and url_type[1] == "playlist":
-            try:
-                await self.play_playlist(ctx, player, url_type[2], ytMusic=True)
-            except PlaylistNotFound:
-                await ctx.send(
-                    embed=Embed.error(":x: Playlist could not be processed. It might be private"))
+                await ctx.send(embed=Embed.error("Could not find the playlist"))
 
         else:
             await ctx.send(embed=Embed.error(":x: I could not determine the link-type"))
@@ -513,6 +493,8 @@ class Jukebox(Cog):
                         text=f"Requested by {ctx.author.display_name}#{ctx.author.discriminator}")
         await ctx.send(embed=mbed)
         yt.close()
+
+    #TODO: Playnow function
 
     @cog_slash(name="pause")
     async def _pause(self, ctx):
@@ -756,7 +738,7 @@ class Jukebox(Cog):
 
     @cog_slash(name="loopqueue")
     async def _loopqueue(self, ctx: SlashContext, mode: str, smart_modifying: str = "True"):
-        #TODO: Write loopqueue (save in database)
+        #TODO: Write loopqueue (save snapshot to database)
         pass
 
     @cog_slash(name="volume")
@@ -1014,6 +996,8 @@ class Jukebox(Cog):
                 colour=discord.Colour.green()
             )
             await ctx.send(embed=mbed)
+
+    #TODO: Move command that lets you switch songs
 
     @cog_slash(name="removedupes")
     async def _removedupes(self, ctx: SlashContext):

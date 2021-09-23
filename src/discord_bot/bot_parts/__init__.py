@@ -17,3 +17,4 @@ from src.discord_bot.youtube_api import Api
 from discord_slash import SlashContext
 from math import ceil
 from utility.get import Embed
+from googleapiclient.errors import HttpError

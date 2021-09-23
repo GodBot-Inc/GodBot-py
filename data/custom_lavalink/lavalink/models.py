@@ -83,6 +83,7 @@ class BasePlayer(ABC):
     """
 
     def __init__(self, guild_id, node):
+        #TODO: Use channel_id to determine the specific player
         self.guild_id = str(guild_id)
         self.node = node
         self._original_node = None  # This is used internally for failover.
