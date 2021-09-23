@@ -14,5 +14,8 @@ def start_server():
     app.run(debug=True)
 
 
+def setup(client):
+    pass
+
 if __name__ == "__main__":
     start_server()

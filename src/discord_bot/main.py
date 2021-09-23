@@ -123,6 +123,8 @@ async def invitelink(ctx, duration: int):
 for file in os.listdir("bot_parts"):
     if file.endswith(".py") and file != "__init__.py":
         client.load_extension(f"bot_parts.{file[:-3]}")
+client.load_extension("src.Api.flask_api")
+
 
 if __name__ == "__main__":
     try:

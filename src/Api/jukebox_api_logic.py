@@ -10,6 +10,7 @@ from time import time
 from asyncio import sleep
 from src.discord_bot.DatabaseCommunication import Database
 from discord_slash.utils.manage_components import create_button, create_actionrow
+from utility.get import ActionRows
 
 COLOUR = 12747823
 Red = 15158332
@@ -131,71 +132,16 @@ async def start_timer(msg, type: int) -> None:
             db.delete_search(msg.id)
             return
 
-        component_id = msg_json["components"][0]["components"][1]["custom_id"]
-        if component_id == "closed_search_left":
-            db.delete_search(msg.id)
-            return
-        elif component_id == "closed_queue_left":
-            db.delete_queue(msg.id)
-            return
         await sleep(30)  # Cooldown so we don't request the discord_bot API too often
     if type == 1:
         await msg.edit(
-            components=[create_actionrow(
-                create_button(
-                    style=5,
-                    label="Url",
-                    url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                    disabled=True
-                ),
-                create_button(
-                    style=2,
-                    label="◀",
-                    custom_id="closed_search_left",
-                    disabled=True
-                ),
-                create_button(
-                    style=2,
-                    label="▶",
-                    custom_id="closed_search_right",
-                    disabled=True
-                )
-            )]
+            components=ActionRows.search("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "disabled")
         )
         db.delete_search(msg.id)
     elif type == 2:
         await msg.edit(
-            components=[create_actionrow(
-                create_button(
-                    style=2,
-                    label="◀◀",
-                    custom_id="a",
-                    disabled=True
-                ),
-                create_button(
-                    style=2,
-                    label="◀",
-                    custom_id="closed_queue_left",
-                    disabled=True
-                ),
-                create_button(
-                    style=2,
-                    label="▶",
-                    custom_id="queue_right",
-                    disabled=True
-                ),
-                create_button(
-                    style=2,
-                    label="▶▶",
-                    custom_id="queue_last",
-                    disabled=True
-                )
-            )]
+            components=ActionRows.queue("disabled")
         )
-        db.delete_queue(msg.id)
-    if type == 1:
-        db.delete_search(msg.id)
-    elif type == 2:
         db.delete_queue(msg.id)
 
 

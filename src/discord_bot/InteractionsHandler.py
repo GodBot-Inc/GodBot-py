@@ -3,10 +3,8 @@ from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_components import (create_actionrow,
                                                    create_button)
 
-import utility.get.ActionRows
 from src.discord_bot.DatabaseCommunication import Database
-from src.discord_bot.discord_api import messages
-from src import jukebox_api_logic
+from src.Api import jukebox_api_logic
 from utility.get.ActionRows import queue, search
 
 db = Database()

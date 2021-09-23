@@ -389,8 +389,7 @@ class Jukebox(Cog):
         try:
             url_type: tuple = await check_url(url)
         except (InvalidURL, VideoTypeNotFound):
-            await ctx.send(embed=await _get_embed("error",
-                                                  ":x: Invalid Url. :white_check_mark: Supported:\n*Youtube Music playlist/video\n*Youtube playlist/video"))
+            await ctx.send(embed=Embed.error(":x: Invalid Url. :white_check_mark: Supported:\n*Youtube Music playlist/video\n*Youtube playlist/video"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
@@ -402,94 +401,41 @@ class Jukebox(Cog):
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: I could not get the channel I'm in"))
+            await ctx.send(embed=Embed.error(":x: I could not get the channel I'm in"))
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: We are not in the same channel"))
+            await ctx.send(embed=Embed.error(":x: We are not in the same channel"))
 
         if url_type[0] == "normal" and url_type[1] == "video":
             try:
                 await self.play_video(ctx, player, url_type[2])
             except VideoNotFound:
-                await ctx.send(embed=await _get_embed("error", ":x: Player could not get the track"))
+                await ctx.send(embed=Embed.error(":x: Player could not get the track"))
 
         elif url_type[0] == "music" and url_type[1] == "video":
             try:
                 await self.play_video(ctx, player, url_type[2], ytMusic=True)
             except VideoNotFound:
-                await ctx.send(embed=await _get_embed("error", ":x: Player could not get the track"))
+                await ctx.send(embed=Embed.error(":x: Player could not get the track"))
 
         elif url_type[0] == "normal" and url_type[1] == "playlist":
             try:
                 await self.play_playlist(ctx, player, url_type[2])
             except PlaylistNotFound:
                 await ctx.send(
-                    embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
+                    embed=Embed.error(":x: Playlist could not be processed. It might be private"))
 
         elif url_type[0] == "music" and url_type[1] == "playlist":
             try:
                 await self.play_playlist(ctx, player, url_type[2], ytMusic=True)
             except PlaylistNotFound:
                 await ctx.send(
-                    embed=await _get_embed("error", ":x: Playlist could not be processed. It might be private"))
+                    embed=Embed.error(":x: Playlist could not be processed. It might be private"))
 
         else:
-            await ctx.send(embed=await _get_embed("error", ":x: I could not determine the link-type"))
+            await ctx.send(embed=Embed.error(":x: I could not determine the link-type"))
 
-    @cog_slash(
-        name="playrandom",
-        description="Plays random songs ranked by relevance",
-        options=[
-            create_option(
-                name="search",
-                description="Here you give a search Term I will search for",
-                option_type=3,
-                required=True
-            ),
-            create_option(
-                name="queuelength",
-                description="Max songs I will randomly put in the queue",
-                option_type=4,
-                required=False
-            ),
-            create_option(
-                name="songfilter",
-                description="Whether only songs should be searched",
-                option_type=3,
-                required=False,
-                choices=[
-                    create_choice(
-                        name="Only Songs",
-                        value="True"
-                    ),
-                    create_choice(
-                        name="Everything",
-                        value="False"
-                    )
-                ]
-            ),
-            create_option(
-                name="priority_level",
-                description="The priority level determines how strict to search (High -> public, Low -> random)",
-                option_type=3,
-                required=False,
-                choices=[
-                    create_choice(
-                        name="High",
-                        value="high"
-                    ),
-                    create_choice(
-                        name="Medium",
-                        value="medium"
-                    ),
-                    create_choice(
-                        name="Low",
-                        value="low"
-                    )
-                ]
-            )
-        ]
-    )
-    async def _playrandom(self, ctx: SlashContext, search: str, queuelength: int = 1, songfilter: str = "True",
+    @cog_slash(name="searchplay")
+    async def _searchplay(self, ctx: SlashContext, search: str, queuelength: int = 1, songfilter: str = "True",
                           priority_level: str = "high"):
         """
 
@@ -501,7 +447,7 @@ class Jukebox(Cog):
         songfilter: Whether to only search for songs. Defaults to "True"
 
         """
-        await ctx.send(embed=await _get_embed("error", ":x: In Development"))
+        await ctx.send(embed=Embed.error(":x: In Development"))
         return
 
         if queuelength != 1:
@@ -519,10 +465,10 @@ class Jukebox(Cog):
 
         channel: int = player.fetch("channel")
         if ctx.author.voice.channel.id is None:
-            await ctx.send(embed=_get_embed("error", ":x: I could not get the channel I'm in"))
+            await ctx.send(embed=_get_embed("error"":x: I could not get the channel I'm in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: We are not in the same channel"))
+            await ctx.send(embed=Embed.error(":x: We are not in the same channel"))
             return
 
         yt = Api()
@@ -533,16 +479,15 @@ class Jukebox(Cog):
         if yt.thumbnail == [] or yt.title == [] or yt.url == []:
             if songfilter == "True":
                 await ctx.send(
-                    embed=await _get_embed("error", f":x: No songs  found that are matching the keyword {search}"))
+                    embed=Embed.error(f":x: No songs  found that are matching the keyword {search}"))
             else:
                 await ctx.send(
-                    embed=await _get_embed("error", f":x: No videos found that are matching the keyword {search}"))
+                    embed=Embed.error(f":x: No videos found that are matching the keyword {search}"))
             return
 
         results: dict = await player.node.get_tracks(f"ytsearch: {yt.url[0]}")
         if not results["tracks"]:
-            await ctx.send(embed=await _get_embed("error",
-                                                  ":x: Could not get the song you want to play. Maybe it's and old url or the video is not public"))
+            await ctx.send(embed=Embed.error(":x: Could not get the song you want to play. Maybe it's and old url or the video is not public"))
             return
         track = results["tracks"][0]
 
@@ -581,23 +526,23 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: there is no player active on your server"))
+            await ctx.send(embed=Embed.error(":x: there is no player active on your server"))
             return
         if player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: I'm already on pause"))
+            await ctx.send(embed=Embed.error(":x: I'm already on pause"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not get the channel I'm currently in"))
+            await ctx.send(embed=Embed.error(":x: Could not get the channel I'm currently in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: We are not in the same channel"))
+            await ctx.send(embed=Embed.error(":x: We are not in the same channel"))
             return
 
         await player.set_pause(True)
@@ -616,23 +561,23 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no palyer active on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no palyer active on your server"))
             return
         if not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: I'm not on pause"))
+            await ctx.send(embed=Embed.error(":x: I'm not on pause"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not get the channel I'm currently in"))
+            await ctx.send(embed=Embed.error(":x: Could not get the channel I'm currently in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: We are not in the same channel"))
+            await ctx.send(embed=Embed.error(":x: We are not in the same channel"))
             return
 
         await player.set_pause(False)
@@ -651,23 +596,23 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no player active on your server"))
             return
         if not player.paused and not player.is_playing:
-            await ctx.send(embed=await _get_embed("error", ":x: I'm not paused and I'm not playing any songs"))
+            await ctx.send(embed=Embed.error(":x: I'm not paused and I'm not playing any songs"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: I could not get the channel I'm currently in"))
+            await ctx.send(embed=Embed.error(":x: I could not get the channel I'm currently in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: We are not in the same channel"))
+            await ctx.send(embed=Embed.error(":x: We are not in the same channel"))
             return
 
         await player.stop()
@@ -686,23 +631,23 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no player active on your server"))
             return
         if not player.is_playing and not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: No music is playing or being paused"))
+            await ctx.send(embed=Embed.error(":x: No music is playing or being paused"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not get the channel I'm currently in"))
+            await ctx.send(embed=Embed.error(":x: Could not get the channel I'm currently in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same channel as I am"))
             return
 
         mbed = discord.Embed(title="",
@@ -725,28 +670,28 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice.channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no player active on your server"))
             return
         if not player.is_playing and not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: No music is playing or being paused"))
+            await ctx.send(embed=Embed.error(":x: No music is playing or being paused"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not get the channel I'm currently in"))
+            await ctx.send(embed=Embed.error(":x: Could not get the channel I'm currently in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same channel as I am"))
             return
 
         index = max(index, 0)
         if index > len(player.queue):
-            await ctx.send(embed=await _get_embed("error", ":x: This song does not exist in the queue"))
+            await ctx.send(embed=Embed.error(":x: This song does not exist in the queue"))
             return
 
         song: lavalink.models.AudioTrack = player.queue[index - 1]
@@ -772,30 +717,30 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no player active on your server"))
             return
         if not player.is_playing and not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: No music is playing or being paused"))
+            await ctx.send(embed=Embed.error(":x: No music is playing or being paused"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not get the channel I'm currently in"))
+            await ctx.send(embed=Embed.error(":x: Could not get the channel I'm currently in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as me"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same channel as me"))
             return
 
         if player.repeat and mode == "True":
-            await ctx.send(embed=await _get_embed("error", ":x: Already looping the current song"))
+            await ctx.send(embed=Embed.error(":x: Already looping the current song"))
             return
         if not player.repeat and mode == "False":
-            await ctx.send(embed=await _get_embed("error", ":x: Not looping the current song"))
+            await ctx.send(embed=Embed.error(":x: Not looping the current song"))
             return
 
         if mode == "True":
@@ -832,20 +777,20 @@ class Jukebox(Cog):
         level: int = max(min(level, 10), 0)
 
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no player active on your server"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: I could not get the channel I'm in"))
+            await ctx.send(embed=Embed.error(":x: I could not get the channel I'm in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same Voicechannel as I am"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same Voicechannel as I am"))
             return
 
         volume: int = player.volume
@@ -875,10 +820,10 @@ class Jukebox(Cog):
         """
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no active player on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no active player on your server"))
             return
         if not player.is_playing and not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: I'm not playing audio or being paused"))
+            await ctx.send(embed=Embed.error(":x: I'm not playing audio or being paused"))
             return
 
         if not player.current:
@@ -953,30 +898,30 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: There is no player active on your server"))
+            await ctx.send(embed=Embed.error(":x: There is no player active on your server"))
             return
         if not player.is_playing and not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: I'm not playing audio or being paused"))
+            await ctx.send(embed=Embed.error(":x: I'm not playing audio or being paused"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: I could nto get the channel I'm in"))
+            await ctx.send(embed=Embed.error(":x: I could nto get the channel I'm in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same channel as I am"))
             return
 
         yt = Api()
         try:
             yt.search_video_url([player.current.uri])
         except KeyError:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not process the current song"))
+            await ctx.send(embed=Embed.error(":x: Could not process the current song"))
             return
 
         requester: discord.Member = discord.utils.get(ctx.guild.members, id=player.current.requester)
@@ -1029,27 +974,27 @@ class Jukebox(Cog):
         await ctx.defer()
 
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not find a player on your server"))
+            await ctx.send(embed=Embed.error(":x: Could not find a player on your server"))
             return
         if not player.is_playing and not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: I'm not playing audio or being paused"))
+            await ctx.send(embed=Embed.error(":x: I'm not playing audio or being paused"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not get teh channel I'm currently in"))
+            await ctx.send(embed=Embed.error(":x: Could not get teh channel I'm currently in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same Voicechannel as I am"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same Voicechannel as I am"))
             return
 
         if not player.queue:
             await ctx.send(
-                embed=await _get_embed("error", ":x: Queue is empty so I can't remove anything from it"))
+                embed=Embed.error(":x: Queue is empty so I can't remove anything from it"))
             return
 
         if index == 0:
@@ -1059,7 +1004,7 @@ class Jukebox(Cog):
                                                colour=discord.Colour.blue()))
 
         elif index - 1 > len(player.queue):
-            await ctx.send(embed=await _get_embed("error", ":x: There is no track with this index"))
+            await ctx.send(embed=Embed.error(":x: There is no track with this index"))
 
         else:
             track: lavalink.AudioTrack = player.queue.pop(index - 1)
@@ -1091,6 +1036,10 @@ class Jukebox(Cog):
             ----------
             seq: The original list that the function should remove all duplicates from
 
+            Returns
+            ----------
+            Tuple[list, int]
+
             """
             result_tracks: list = []
             result_titles: list = []
@@ -1107,28 +1056,28 @@ class Jukebox(Cog):
             return result_tracks, removed
 
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         if player is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not find a player on your server"))
+            await ctx.send(embed=Embed.error(":x: Could not find a player on your server"))
             return
         if not player.is_playing and not player.paused:
-            await ctx.send(embed=await _get_embed("error", ":x: I'm not playing audio or being paused"))
+            await ctx.send(embed=Embed.error(":x: I'm not playing audio or being paused"))
             return
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could not find the channel I'm in"))
+            await ctx.send(embed=Embed.error(":x: Could not find the channel I'm in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same channel as I am"))
             return
 
         entduped_tuple: tuple = entdupe(player.queue)
         player.queue = entduped_tuple[0]
-        await ctx.send(embed=await _get_embed("success", f":white_check_mark: Removed {entduped_tuple[1]}"))
+        await ctx.send(embed=Embed.success(f":white_check_mark: Removed {entduped_tuple[1]}"))
 
     @cog_slash(name="leave")
     async def _leave(self, ctx: SlashContext):
@@ -1142,23 +1091,23 @@ class Jukebox(Cog):
 
         """
         if ctx.author.voice is None:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not connected to a Voicechannel"))
+            await ctx.send(embed=Embed.error(":x: You are not connected to a Voicechannel"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=await _get_embed("error", ":x: Could nto find the channel I'm in"))
+            await ctx.send(embed=Embed.error(":x: Could nto find the channel I'm in"))
             return
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=await _get_embed("error", ":x: You are not in the same channel as I am"))
+            await ctx.send(embed=Embed.error(":x: You are not in the same channel as I am"))
             return
 
         if player is not None:
             await player.stop()
         await self.connect_to(ctx.guild.id, 0)
         await ctx.send(
-            embed=await _get_embed("success", ":white_check_mark: Left the Voicechannel and cleaned up"))
+            embed=Embed.success(":white_check_mark: Left the Voicechannel and cleaned up"))
 
 
 def setup(client):
