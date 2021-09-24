@@ -9,7 +9,6 @@ __pycache__/
 
 ### CUSTOM ###
 CONSTANTS.py
-*_validation.py
 
 # C extensions
 *.so
