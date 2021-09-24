@@ -1,81 +1,6 @@
 from . import *
 
 
-async def check_url(url: str) -> Dict[str, str, str]:
-    """
-
-    A helper function to determine whether the given url is a video- or playlist-url.
-    It also returns the Id to access either the playlist or the video.
-
-    Parameters
-    ----------
-    url: The given url that's going to be checked
-
-    Returns
-    -------
-    Dict[str, str, str]: first is the type of the link (platform, type, ID)
-
-    """
-
-    async def valid_url(validate_url: str) -> bool:
-        """
-
-        A function that sends a get request to the given link so you can test if it is a valid one.
-
-        Parameters
-        ----------
-        validate_url: The url that should be tested
-
-        Returns
-        -------
-        bool: Whether the website is callable or not
-
-        """
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(validate_url) as resp:
-                    pass
-            except aiohttp.client_exceptions.InvalidURL:
-                return False
-            else:
-                return True
-
-    async def yt_url_processing() -> Tuple[str, str]:
-        """
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        Tuple[str, str]: first is the type of the link ("playlist"/"video", ID)
-
-        """
-        try:
-            playlist_url: str = url.split("list=")[1]
-        except IndexError:  # Url is not a playlist
-            try:
-                videoId: str = url.split("watch?v=")[1]
-            except IndexError:
-                raise VideoTypeNotFound
-            return "youtube", "video", videoId
-
-        else:
-            try:
-                playlist_url: str = playlist_url.split("&")[0]
-            except IndexError:
-                pass
-            return "youtube", "playlist", playlist_url
-
-    if not await valid_url(url):
-        raise InvalidURL
-
-    if "youtube.com" in url:
-        return await yt_url_processing()
-    else:
-        raise InvalidURL
-
-
 class Play(Resource):
     #ARGS:
     play_parser = reqparse.RequestParser()
@@ -140,6 +65,7 @@ class Play(Resource):
                 "youtube",
                 "https://youtube.com/watch?v={}".format()
             )
+
 
 def setup(api):
     global jukebox

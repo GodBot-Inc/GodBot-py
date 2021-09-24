@@ -1,6 +1,6 @@
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from src.discord_bot.CONSTANTS import YT_API_KEY
+from src.CONSTANTS import YT_API_KEY
 
 """
 TODO: Choose a different structure for the YT-Api wrapper.

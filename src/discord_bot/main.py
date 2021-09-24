@@ -1,19 +1,17 @@
-import os
-
 import discord
-
+from src.CONSTANTS import *
 import sys
-sys.path.insert(0,"/volume1/NAS Main Folder/GodBot/")
+# Put the path to your cloned repository here:
+sys.path.insert(0, REPOSITORY_PATH)
 
 from discord.ext import commands
-from discord.utils import get
 from discord_slash import SlashCommand
-from discord_slash import SlashContext
 from discord_slash.utils.manage_commands import create_option
 
-from CONSTANTS import TOKEN
 from src.discord_bot.InteractionsHandler import EventHandler
 from src.discord_bot.DatabaseCommunication import Database
+from data.custom_lavalink import lavalink
+from src.Api import jukebox_api_logic
 
 # Windows: go into systemvariables and add variable named PYTHONPATH with path to src
 # MacOS: `nano ~/.bash_profile` add line `export PYTHONPATH="directory_to_src"`
@@ -25,6 +23,29 @@ client = commands.Bot(command_prefix=".", intents=intents)
 slash = SlashCommand(client)
 client.remove_command("help")
 db = Database()
+
+
+#Lavalink Definition
+async def track_hook(event):
+    if isinstance(event, lavalink.events.QueueEndEvent):
+        print(f"Event in track_hook is being called {event}")
+        guild_id: int = int(event.player.guild_id)
+        await connect_to(guild_id, 0)
+
+
+async def connect_to(guild_id: int, channel_id: int):
+    ws = client._connection._get_websocket(guild_id)
+    if channel_id == 0:
+        await ws.voice_state(str(guild_id), None)
+        return
+    await ws.voice_state(str(guild_id), str(channel_id))
+
+
+client.music = lavalink.Client(APPLICATION_ID)
+client.music.add_node(LAVALINK_IP, LAVALINK_PORT, LAVALINK_PW, "eu", "music-node")
+client.add_listener(client.music.voice_update_handler, "on_socket_response")
+client.music.add_event_hook(track_hook)
+logic = jukebox_api_logic.ClientLogic(client)
 
 
 @client.check
@@ -120,10 +141,11 @@ async def invitelink(ctx, duration: int):
 
 
 """Loads all cogs"""
-for file in os.listdir("bot_parts"):
-    if file.endswith(".py") and file != "__init__.py":
-        client.load_extension(f"bot_parts.{file[:-3]}")
-client.load_extension("src.Api.flask_api")
+# for file in os.listdir("bot_parts"):
+#     if file.endswith(".py") and file != "__init__.py":
+#         client.load_extension(f"bot_parts.{file[:-3]}")
+# client.load_extension("src.Api.flask_api")
+client.load_extension("bot_parts.jukebox")
 
 
 if __name__ == "__main__":

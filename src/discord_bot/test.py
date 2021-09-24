@@ -1,5 +1,4 @@
-from discord_api import messages
-from pprint import pprint
+from src.discord_api import messages
 
 messages.send(
     channel_id=867677864407859240,

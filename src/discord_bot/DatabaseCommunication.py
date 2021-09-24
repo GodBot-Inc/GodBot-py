@@ -1,8 +1,8 @@
 import pymongo
 
-from src.discord_bot.errors import *
+from src.errors import *
 import time
-from src.discord_bot.CONSTANTS import USERNAME, PASSWORD
+from src.CONSTANTS import USERNAME, PASSWORD
 
 
 class Singleton(object):

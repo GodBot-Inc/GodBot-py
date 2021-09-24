@@ -16,6 +16,3 @@ def start_server():
 
 def setup(client):
     pass
-
-if __name__ == "__main__":
-    start_server()
