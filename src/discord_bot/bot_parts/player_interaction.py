@@ -333,7 +333,7 @@ class PlayerInteraction(Cog):
             await player.stop()
         await self.connect_to(ctx.guild.id, 0)
         await ctx.send(
-            embed=Embed.success(":white_check_mark: Left the Voicechannel and cleaned up")
+            embed=Embed.success("Left the Voicechannel and cleaned up")
         )
 
 

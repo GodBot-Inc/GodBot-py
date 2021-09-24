@@ -235,7 +235,7 @@ class Player(Cog):
         try:
             url_type: tuple = await check_url(url)
         except (InvalidURL, VideoTypeNotFound):
-            await ctx.send(embed=Embed.error(":x: Invalid Url. :white_check_mark: Supported:\n*Youtube Music playlist/video\n*Youtube playlist/video"))
+            await ctx.send(embed=Embed.error("Invalid Url. :white_check_mark: Supported:\n*Youtube Music playlist/video\n*Youtube playlist/video"))
             return
 
         player: lavalink.models.DefaultPlayer = self.client.music.player_manager.get(ctx.guild.id)
@@ -247,24 +247,24 @@ class Player(Cog):
 
         channel: int = player.fetch("channel")
         if channel is None:
-            await ctx.send(embed=Embed.error(":x: I could not get the channel I'm in"))
+            await ctx.send(embed=Embed.error("I could not get the channel I'm in"))
         if channel != ctx.author.voice.channel.id:
-            await ctx.send(embed=Embed.error(":x: We are not in the same channel"))
+            await ctx.send(embed=Embed.error("We are not in the same channel"))
 
-        if url_type[1] == "video":
+        if url_type[0] == "video":
             try:
-                await self.play_video(ctx, player, url_type[2], platform=url_type[0])
+                await self.play_video(ctx, player, url_type[1])
             except VideoNotFound:
                 await ctx.send(embed=Embed.error("Could not find the video"))
 
-        elif url_type[1] == "playlist":
+        elif url_type[0] == "playlist":
             try:
-                await self.play_playlist(ctx, player, url_type[2], platform=url_type[0])
+                await self.play_playlist(ctx, player, url_type[1])
             except PlaylistNotFound:
                 await ctx.send(embed=Embed.error("Could not find the playlist"))
 
         else:
-            await ctx.send(embed=Embed.error(":x: I could not determine the link-type"))
+            await ctx.send(embed=Embed.error("I could not determine the link-type"))
 
     @cog_slash(name="searchplay")
     async def _searchplay(self, ctx: SlashContext, search: str, queue_length: int = 1, priority_level: str = "high"):
