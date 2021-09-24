@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import discord
 from src.discord_bot.DatabaseCommunication import Database
-from discord.ext.commands import Cog
 from data.custom_lavalink import lavalink
 import asyncio
 from discord_slash import SlashContext

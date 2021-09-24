@@ -1,7 +1,8 @@
+import os
 import discord
 from src.CONSTANTS import *
+
 import sys
-# Put the path to your cloned repository here:
 sys.path.insert(0, REPOSITORY_PATH)
 
 from discord.ext import commands
@@ -141,11 +142,15 @@ async def invitelink(ctx, duration: int):
 
 
 """Loads all cogs"""
-# for file in os.listdir("bot_parts"):
-#     if file.endswith(".py") and file != "__init__.py":
-#         client.load_extension(f"bot_parts.{file[:-3]}")
+for file in os.listdir("bot_parts"):
+    if file.endswith(".py") and file != "__init__.py":
+        client.load_extension(f"bot_parts.{file[:-3]}")
 # client.load_extension("src.Api.flask_api")
-client.load_extension("bot_parts.jukebox")
+# client.load_extension("bot_parts.help")
+# client.load_extension("bot_parts.interaction")
+# client.load_extension("bot_parts.player")
+# client.load_extension("bot_parts.player_interaction")
+# client.load_extension("bot_parts.queue_interaction")
 
 
 if __name__ == "__main__":

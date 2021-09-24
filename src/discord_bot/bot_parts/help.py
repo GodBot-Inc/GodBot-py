@@ -1,11 +1,12 @@
 from . import *
+from discord.ext.commands import Cog
 
 
 ICON_LINK = r"https://w7.pngwing.com/pngs/773/218/png-transparent-computer-icons-help-miscellaneous-text-hand-thumbnail.png"
 COLOUR_CODE = 0x0C4FEB
 
 
-class HelpCog(Cog):
+class Help(Cog):
     """This is the help part so users can get an introduction to the bot in discord_bot"""
     def __init__(self, client):
         self.client = client
@@ -46,4 +47,4 @@ class HelpCog(Cog):
 
 
 def setup(client):
-    client.add_cog(HelpCog(client))
+    client.add_cog(Help(client))

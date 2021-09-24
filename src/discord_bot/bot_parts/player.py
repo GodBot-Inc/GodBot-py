@@ -1,4 +1,5 @@
 from . import *
+from discord.ext.commands import Cog
 
 COLOUR = 0xC2842F
 
@@ -7,7 +8,10 @@ class Player(Cog):
     def __init__(self, client):
         self.client = client
         self.db = Database()
-        print("Player commands ready")
+
+    @Cog.listener()
+    async def on_ready(self):
+        print("Player is loaded")
 
     async def connect_to(self, guild_id: int, channel_id: int):
         ws = self.client._connection._get_websocket(guild_id)
@@ -285,4 +289,4 @@ class Player(Cog):
 
 
 def setup(client):
-    client.add_cog(client)
+    client.add_cog(Player(client))

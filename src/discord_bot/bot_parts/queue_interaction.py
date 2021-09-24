@@ -1,10 +1,15 @@
 from . import *
+from discord.ext.commands import Cog
 
 
 class QueueInteraction(Cog):
     def __init__(self, client):
         self.client = client
         self.db = Database()
+
+    @Cog.listener()
+    async def on_ready(self):
+        print("Queue Interactions are loaded")
 
     @cog_slash(name="loopqueue")
     async def _loopqueue(self, ctx: SlashContext, mode: str, smart_modifying: str = "True"):
@@ -135,4 +140,4 @@ class QueueInteraction(Cog):
 
 
 def setup(client):
-    client.add_cog(QueueInteraction(Cog))
+    client.add_cog(QueueInteraction(client))

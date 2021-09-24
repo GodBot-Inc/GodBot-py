@@ -45,7 +45,7 @@ class Play(Resource):
             abort(401, error="The voiceID must be of type int not str")
 
         try:
-            url_result: tuple = check_url(args.get("track_url"))
+            url_result: tuple = utility.check.check_url(args.get("track_url"))
         except InvalidURL:
             abort(404, error="The given track_url is not callable from aiohttp (it is not valid)")
             return

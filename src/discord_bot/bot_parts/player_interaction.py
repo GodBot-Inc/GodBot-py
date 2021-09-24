@@ -1,9 +1,14 @@
 from . import *
+from discord.ext.commands import Cog
 
 
 class PlayerInteraction(Cog):
     def __init__(self, client):
         self.client = client
+
+    @Cog.listener()
+    async def on_ready(self):
+        print("Player Interactions are loaded")
 
     async def connect_to(self, guild_id: int, channel_id: int):
         ws = self.client._connection._get_websocket(guild_id)
@@ -333,4 +338,4 @@ class PlayerInteraction(Cog):
 
 
 def setup(client):
-    client.add_cog(client)
+    client.add_cog(PlayerInteraction(client))

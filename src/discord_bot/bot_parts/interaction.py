@@ -1,10 +1,15 @@
 from . import *
+from discord.ext.commands import Cog
 
 
 class Interaction(Cog):
     def __init__(self, client):
         self.client = client
         self.db = Database()
+
+    @Cog.listener()
+    async def on_ready(self):
+        print("Interactions are loaded")
 
     @cog_slash(name="search")
     async def _search(self, ctx: SlashContext, search: str, results: int = 8, songfilter: str = "True"):
@@ -80,7 +85,7 @@ class Interaction(Cog):
             await ctx.send(embed=Embed.error("I'm not playing audio or being paused"))
             return
 
-        if not player.current:
+        if player.current is None:
             await ctx.send(
                 embed=discord.Embed(
                     title=":x: I'm currently not playing audio",
